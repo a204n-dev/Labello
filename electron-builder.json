@@ -1,6 +1,6 @@
 {
-  "appId": "com.vlabeler.next.workstation",
-  "productName": "VLabeler Next - Vocal Labeling Workstation",
+  "appId": "com.labello.vocal.workstation",
+  "productName": "Labello",
   "directories": {
     "output": "release"
   },
@@ -30,10 +30,8 @@
     "allowToChangeInstallationDirectory": true,
     "createDesktopShortcut": true,
     "createStartMenuShortcut": true,
-    "shortcutName": "VLabeler Next Workstation",
-    "uninstallDisplayName": "VLabeler Next Workstation",
-    "installerIcon": "public/favicon.ico",
-    "uninstallerIcon": "public/favicon.ico",
+    "shortcutName": "Labello Vocal Workstation",
+    "uninstallDisplayName": "Labello Vocal Workstation",
     "artifactName": "${productName}-Setup-${version}-${arch}.${ext}"
   },
   "portable": {
