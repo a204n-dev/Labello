@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   build-windows:
-    name: Package Windows .exe Release
+    name: Package Windows .exe Release (Bun Runtime)
     runs-on: windows-latest
     permissions:
       contents: write
@@ -27,19 +27,24 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Setup Node.js 22 LTS
-        uses: actions/setup-node@v4
+      - name: Setup Bun (Fast & User-Friendly All-in-One Toolkit)
+        uses: oven-sh/setup-bun@v2
         with:
-          node-version: 22
+          bun-version: latest
+
+      - name: Verify Bun Environment
+        shell: pwsh
+        run: |
+          Write-Host "Bun Version: $(bun --version)"
 
       - name: Install Dependencies
-        run: npm install
+        run: bun install
 
       - name: Build Web Application
-        run: npm run build
+        run: bun run build
 
       - name: Package Windows Installer & Portable Executable
-        run: npx electron-builder --win --x64 -p never --config electron-builder.json
+        run: bunx electron-builder --win --x64 -p never --config electron-builder.json
         env:
           ELECTRON_BUILDER_ALLOW_UNRESOLVED_DEPENDENCIES: true
           CSC_IDENTITY_AUTO_DISCOVERY: false
@@ -66,6 +71,7 @@ jobs:
           $notes = @"
           ## Labello - Vocal Labeling Workstation ($tag)
           *Built on top of [vLabeler](https://github.com/sdercolin/vlabeler) by @sdercolin*
+          *Built with Bun - high performance, modern runtime & package manager*
 
           ### Windows Downloads:
           - **Installer (.exe)**: Setup wizard with desktop and start menu shortcuts.

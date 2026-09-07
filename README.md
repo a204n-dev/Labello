@@ -88,12 +88,15 @@ You can also trigger builds manually via **GitHub &rarr; Actions &rarr; Build an
 
 ### Building the Windows .exe Locally
 
-To compile the Windows desktop installer on your local machine:
+To compile the Windows desktop installer on your local machine using Bun (fastest & most user-friendly):
 
 ```bash
-npm install
-npm run dist:win
+bun install
+bun run dist:win
 ```
+
+*(Alternatively, via standard npm: `npm install && npm run dist:win`)*
+
 The output `.exe` installers are generated in the `./release/` directory.
 
 ---

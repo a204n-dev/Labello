@@ -33,7 +33,12 @@ export const ReleasesModal: React.FC<ReleasesModalProps> = ({ isOpen, onClose })
   const gitReleaseCommands = `git tag -a v1.0.0 -m "Release v1.0.0: Windows Desktop Installer"
 git push origin v1.0.0`;
 
-  const localBuildCommands = `npm install
+  const localBuildCommands = `# Fast & User-Friendly (Bun)
+bun install
+bun run dist:win
+
+# Or via npm
+npm install
 npm run dist:win`;
 
   return (
