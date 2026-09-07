@@ -38,6 +38,8 @@ interface HeaderProps {
   onSaveProject: () => void;
   onLoadProject: () => void;
   onOpenAudio?: () => void;
+  onImportOto?: () => void;
+  onOpenReclistMatch?: () => void;
   enableSpectrogram: boolean;
   onToggleSpectrogram: () => void;
 }
@@ -98,6 +100,23 @@ export const Header: React.FC<HeaderProps> = ({
               <button onClick={() => { setFileMenuOpen(false); onSaveProject(); }} className="w-full text-left px-3 py-1.5 hover:bg-slate-800">
                 Save Project (.vbp) <span className="text-slate-500">(Ctrl+S)</span>
               </button>
+              <hr className="border-slate-700 my-1" />
+              {onImportOto && (
+                <button
+                  onClick={() => { setFileMenuOpen(false); onImportOto(); }}
+                  className="w-full text-left px-3 py-1.5 hover:bg-slate-800"
+                >
+                  Import Base OTO (oto.ini)…
+                </button>
+              )}
+              {onOpenReclistMatch && (
+                <button
+                  onClick={() => { setFileMenuOpen(false); onOpenReclistMatch(); }}
+                  className="w-full text-left px-3 py-1.5 hover:bg-slate-800"
+                >
+                  Reclist Match Report…
+                </button>
+              )}
             </div>
           )}
         </div>

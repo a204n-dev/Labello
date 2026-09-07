@@ -15,6 +15,8 @@ import { ModelDiagnosticsModal } from './components/ModelDiagnosticsModal';
 import { ExportModal } from './components/ExportModal';
 import { BatchProgressModal } from './components/BatchProgressModal';
 import { ReleasesModal } from './components/ReleasesModal';
+import { ImportOtoModal } from './components/ImportOtoModal';
+import { ReclistMatchModal } from './components/ReclistMatchModal';
 
 import { 
   AudioFileItem, 
@@ -57,6 +59,8 @@ export default function App() {
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isBatchOpen, setIsBatchOpen] = useState(false);
   const [isReleasesOpen, setIsReleasesOpen] = useState(false);
+  const [isImportOtoOpen, setIsImportOtoOpen] = useState(false);
+  const [isReclistMatchOpen, setIsReclistMatchOpen] = useState(false);
 
   // Batch Analysis Progress
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -394,6 +398,29 @@ export default function App() {
     setFiles(updated);
   };
 
+  const handleImportedOto = (comparisons: any[]) => {
+    // comparisons contain the user-accepted changes from ImportOtoModal
+    const updated = files.map(f => {
+      const match = comparisons.find(c => c.fileName === f.name);
+      if (match && match.mergedOto) {
+        return {
+          ...f,
+          oto: match.mergedOto,
+          userModified: true,
+          status: 'verified' as const,
+        };
+      }
+      return f;
+    });
+    setFiles(updated);
+    pushHistory(updated);
+  };
+
+  const handleReclistMatches = (matches: any[]) => {
+    // Store matches for use in OTO update workflow
+    console.log('Reclist matches saved:', matches.length);
+  };
+
   const handleUpdatePhoneme = (phonemeId: string, startMs: number, endMs: number) => {
     if (!activeFileId) return;
     const updated = files.map(f => {
@@ -575,6 +602,8 @@ export default function App() {
           };
           input.click();
         }}
+        onImportOto={() => setIsImportOtoOpen(true)}
+        onOpenReclistMatch={() => setIsReclistMatchOpen(true)}
         enableSpectrogram={settings.enableSpectrogram}
         onToggleSpectrogram={() => setSettings(s => ({ ...s, enableSpectrogram: !s.enableSpectrogram }))}
       />
@@ -681,6 +710,21 @@ export default function App() {
           setIsBatchOpen(false);
           setIsAnalyzing(false);
         }}
+      />
+
+      <ImportOtoModal
+        isOpen={isImportOtoOpen}
+        onClose={() => setIsImportOtoOpen(false)}
+        files={files}
+        onImported={handleImportedOto}
+      />
+
+      <ReclistMatchModal
+        isOpen={isReclistMatchOpen}
+        onClose={() => setIsReclistMatchOpen(false)}
+        files={files}
+        otoEntries={[]}
+        onSaveMatches={handleReclistMatches}
       />
     </div>
   );

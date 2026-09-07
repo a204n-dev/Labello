@@ -21,7 +21,6 @@ jobs:
     permissions:
       contents: write
     env:
-      # Prevent npm from attempting optional (native) dependencies that can fail on runners
       NPM_CONFIG_OPTIONAL: 'false'
 
     steps:
@@ -30,17 +29,14 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Setup Node.js 22 LTS
+      - name: Setup Node.js 24 LTS
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
+          cache: 'npm'
 
       - name: Install Project Dependencies (no optional deps)
-        # Use npm ci for reproducible installs and skip optional native packages
-        run: npm ci --no-optional
-
-      - name: Install Desktop Packager Tools (no optional deps)
-        run: npm install --no-optional --save-dev electron@32.1.2 electron-builder@25.1.8
+        run: npm ci --no-optional --prefer-offline
 
       - name: Build Web Application
         run: npm run build
@@ -53,11 +49,21 @@ jobs:
       - name: Generate SHA-256 Checksums & Release Notes
         shell: pwsh
         run: |
-          Get-ChildItem -Path release/*.exe | ForEach-Object {
-            $hash = (Get-FileHash -Path $_.FullName -Algorithm SHA256).Hash.ToLower()
-            "$hash  $($_.Name)" | Out-File -FilePath release/checksums-sha256.txt -Append -Encoding ascii
+          $releaseDir = "release"
+          if (-not (Test-Path $releaseDir)) {
+            Write-Warning "Release directory not found at $releaseDir"
+            exit 1
           }
-          Get-Content release/checksums-sha256.txt
+          $exes = Get-ChildItem -Path $releaseDir -Filter "*.exe" -ErrorAction SilentlyContinue
+          if (-not $exes) {
+            Write-Error "No .exe files found in $releaseDir"
+            exit 1
+          }
+          $exes | ForEach-Object {
+            $hash = (Get-FileHash -Path $_.FullName -Algorithm SHA256).Hash.ToLower()
+            "$hash  $($_.Name)" | Out-File -FilePath "$releaseDir/checksums-sha256.txt" -Append -Encoding ascii
+          }
+          Get-Content "$releaseDir/checksums-sha256.txt"
 
           $tag = if ("${{ github.event_name }}" -eq "workflow_dispatch") { "${{ inputs.version }}" } else { "${{ github.ref_name }}" }
           if (-not $tag) { $tag = "v1.0.0" }
@@ -71,13 +77,13 @@ jobs:
           - **Portable (.exe)**: Standalone executable, runs immediately with zero installation.
 
           ### Verification:
-          Refer to `checksums-sha256.txt` attached to this release.
+          Refer to \`checksums-sha256.txt\` attached to this release.
 
           ### Requirements:
           - Windows 10 / Windows 11 (64-bit)
           - 4 GB+ RAM
           "@
-          $notes | Out-File -FilePath release/release-notes.md -Encoding utf8
+          $notes | Out-File -FilePath "$releaseDir/release-notes.md" -Encoding utf8
 
       - name: Upload Windows Executables as Action Artifacts
         uses: actions/upload-artifact@v4
@@ -98,7 +104,6 @@ jobs:
 
           Write-Host "Publishing release for tag: $tag"
 
-          # Check if release already exists, if so upload assets to it
           $releaseExists = $false
           try {
             gh release view $tag
