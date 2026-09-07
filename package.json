@@ -1,7 +1,11 @@
 {
   "name": "labello",
+  "productName": "Labello",
+  "description": "Unified Vocal Labeling Workstation built on vLabeler",
+  "author": "sdercolin / Labello Team",
   "private": true,
   "version": "1.0.0",
+  "main": "electron/main.cjs",
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",

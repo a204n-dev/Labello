@@ -18,12 +18,16 @@ jobs:
   build-windows:
     name: Package Windows .exe Release
     runs-on: windows-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Setup Node.js
+      - name: Setup Node.js 22 LTS
         uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -37,12 +41,12 @@ jobs:
       - name: Build Web Application
         run: npm run build
 
-      - name: Compile Windows Installer (.exe) & Portable Executable
-        run: npx electron-builder --win nsis portable --config electron-builder.json
+      - name: Package Windows Installer & Portable Executable
+        run: npx electron-builder --win nsis portable --config electron-builder.json -p never
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ELECTRON_BUILDER_ALLOW_UNRESOLVED_DEPENDENCIES: true
 
-      - name: Generate SHA-256 Checksums
+      - name: Generate SHA-256 Checksums & Release Notes
         shell: pwsh
         run: |
           Get-ChildItem -Path release/*.exe | ForEach-Object {
@@ -51,29 +55,58 @@ jobs:
           }
           Get-Content release/checksums-sha256.txt
 
-      - name: Create GitHub Release with Windows .exe Assets
-        uses: softprops/action-gh-release@v2
+          $tag = if ("${{ github.event_name }}" -eq "workflow_dispatch") { "${{ inputs.version }}" } else { "${{ github.ref_name }}" }
+          if (-not $tag) { $tag = "v1.0.0" }
+
+          $notes = @"
+          ## Labello - Vocal Labeling Workstation ($tag)
+          *Built on top of [vLabeler](https://github.com/sdercolin/vlabeler) by @sdercolin*
+
+          ### Windows Downloads:
+          - **Installer (.exe)**: Setup wizard with desktop and start menu shortcuts.
+          - **Portable (.exe)**: Standalone executable, runs immediately with zero installation.
+
+          ### Verification:
+          Refer to `checksums-sha256.txt` attached to this release.
+
+          ### Requirements:
+          - Windows 10 / Windows 11 (64-bit)
+          - 4 GB+ RAM
+          "@
+          $notes | Out-File -FilePath release/release-notes.md -Encoding utf8
+
+      - name: Upload Windows Executables as Action Artifacts
+        uses: actions/upload-artifact@v4
         with:
-          name: "Labello Release ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}"
-          tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
-          draft: false
-          prerelease: false
-          files: |
+          name: windows-executables
+          path: |
             release/*.exe
             release/checksums-sha256.txt
-          body: |
-            ## Labello - Unified Vocal Labeling Workstation
+          retention-days: 30
 
-            ### Windows Downloads:
-            - **Windows Installer (`.exe`)**: Recommended for most users. Automatically creates desktop shortcuts and start menu items.
-            - **Windows Portable (`.exe`)**: Standalone executable. Run directly without installation.
-
-            ### Verified Checksums:
-            Refer to `checksums-sha256.txt` attached below for cryptographic verification.
-
-            ### System Requirements:
-            - Windows 10 / Windows 11 (64-bit)
-            - DirectX 11 / DirectML or NVIDIA CUDA compatible GPU recommended for accelerated local deep-learning models (SOFA / MFA / Whisper).
-            - Minimum 4 GB RAM (8 GB+ recommended).
+      - name: Publish to GitHub Releases
+        shell: pwsh
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $tag = if ("${{ github.event_name }}" -eq "workflow_dispatch") { "${{ inputs.version }}" } else { "${{ github.ref_name }}" }
+          if (-not $tag) { $tag = "v1.0.0" }
+
+          Write-Host "Publishing release for tag: $tag"
+
+          # Check if release already exists, if so upload assets to it
+          $releaseExists = $false
+          try {
+            gh release view $tag
+            $releaseExists = $true
+          } catch {
+            $releaseExists = $false
+          }
+
+          if ($releaseExists) {
+            Write-Host "Release $tag exists. Uploading assets..."
+            gh release upload $tag release/*.exe release/checksums-sha256.txt --clobber
+          } else {
+            Write-Host "Creating new release $tag..."
+            gh release create $tag release/*.exe release/checksums-sha256.txt --title "Labello $tag" --notes-file release/release-notes.md
+          }
