@@ -58,46 +58,44 @@ The **Unified Vocal Labeling Workstation** bridges the gap between traditional c
 
 ---
 
-## Windows Executable Installation (.exe Releases)
+## Portable Local WebUI & Releases (.bat & .sh Launchers)
 
-Official pre-compiled 64-bit Windows executables are published to the **[Releases](../../releases)** page:
+Labello runs as a **lightweight, high-performance local Browser WebUI**. Because modern web browsers have full JavaScript, Web Audio, and hardware-accelerated Canvas built-in, Labello requires zero heavy runtimes or complex installers on your computer.
 
-1. **Windows Installer (`VLabeler-Next-Setup-x64.exe`)**:
-   - Recommended for standard Windows 10 / 11 desktop usage.
-   - Installs to `%LOCALAPPDATA%\Programs`, registers desktop shortcuts, Start Menu entry, and adds an uninstaller in Windows Settings / Control Panel.
-2. **Portable Edition (`VLabeler-Next-Portable-x64.exe`)**:
-   - Zero-installation standalone `.exe`.
-   - Run immediately from any folder or USB flash drive without requiring administrative permissions.
+### How to Run:
 
-> **Windows Defender SmartScreen Notice**:
-> For community self-signed releases, Windows may display *"Windows protected your PC"*. Click **More info** &rarr; **Run anyway** to proceed.
+1. **Windows**:
+   - Download `labello-portable-webui.zip`, extract it anywhere, and double-click **`start-windows.bat`**.
+   - Automatically spins up a local server using Windows built-in PowerShell (or Python if installed) and opens your default browser at `http://localhost:8080`.
+   - **Zero installation required** on any standard Windows 10 / 11 PC!
+2. **macOS & Linux**:
+   - Extract `labello-portable-webui.zip` and run **`./start-mac-linux.sh`** in terminal (or double-click).
+   - Automatically uses system Python 3 to serve the local files and opens Safari, Chrome, or Firefox.
 
 ---
 
 ### Automated GitHub Actions Release Pipeline
 
-Every tag push or manual workflow dispatch automatically builds, signs, generates SHA256 checksums, and uploads Windows installers:
+Every tag push or manual workflow dispatch automatically builds the static web distribution, packages the cross-platform bundle with all launcher scripts, and uploads `labello-portable-webui.zip` with SHA-256 checksums:
 
 ```bash
-# Create and push a version tag to trigger an automated .exe release build
+# Create and push a version tag to trigger an automated release build
 git tag -a v1.0.0 -m "Release v1.0.0"
 git push origin v1.0.0
 ```
 
-You can also trigger builds manually via **GitHub &rarr; Actions &rarr; Build and Release Windows Executables &rarr; Run workflow**.
+You can also trigger builds manually via **GitHub &rarr; Actions &rarr; Build and Release Portable WebUI &rarr; Run workflow**.
 
-### Building the Windows .exe Locally
+### Building the Portable WebUI Locally
 
-To compile the Windows desktop installer on your local machine using Bun (fastest & most user-friendly):
+To compile the portable package on your local machine using Bun (or npm):
 
 ```bash
 bun install
-bun run dist:win
+bun run build
 ```
 
-*(Alternatively, via standard npm: `npm install && npm run dist:win`)*
-
-The output `.exe` installers are generated in the `./release/` directory.
+Then simply double-click `start-windows.bat` (Windows) or run `./start-mac-linux.sh` (macOS/Linux) to run locally.
 
 ---
 

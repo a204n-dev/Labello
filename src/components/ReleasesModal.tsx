@@ -30,16 +30,16 @@ export const ReleasesModal: React.FC<ReleasesModalProps> = ({ isOpen, onClose })
     setTimeout(() => setCopiedCmd(null), 2000);
   };
 
-  const gitReleaseCommands = `git tag -a v1.0.0 -m "Release v1.0.0: Windows Desktop Installer"
+  const gitReleaseCommands = `git tag -a v1.0.0 -m "Release v1.0.0: Portable Local WebUI"
 git push origin v1.0.0`;
 
-  const localBuildCommands = `# Fast & User-Friendly (Bun)
+  const localBuildCommands = `# Fast local package using Bun:
 bun install
-bun run dist:win
+bun run build
 
-# Or via npm
-npm install
-npm run dist:win`;
+# To test launcher immediately:
+# On Windows: Double-click start-windows.bat
+# On macOS / Linux: ./start-mac-linux.sh`;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4">
@@ -53,13 +53,13 @@ npm run dist:win`;
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-sm font-bold text-white">Windows .exe Releases & Installation</h2>
+                <h2 className="text-sm font-bold text-white">Portable Local WebUI & Releases</h2>
                 <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800/60">
                   v1.0.0 Ready
                 </span>
               </div>
               <p className="text-xs text-slate-400">
-                Official Windows 64-bit installer, portable executable, and automated GitHub Actions release pipeline.
+                Run locally in your browser with zero installations. Double-click <code className="text-emerald-400 font-mono">start-windows.bat</code> on Windows or <code className="text-emerald-400 font-mono">./start-mac-linux.sh</code> on Mac/Linux.
               </p>
             </div>
           </div>
@@ -78,27 +78,27 @@ npm run dist:win`;
           <div>
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2.5 flex items-center gap-1.5">
               <Laptop className="w-3.5 h-3.5 text-indigo-400" />
-              <span>Windows Release Executables (GitHub Releases)</span>
+              <span>Portable WebUI Releases (Windows, macOS, Linux)</span>
             </h3>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {/* Installer .exe Card */}
+              {/* Windows One-Click BAT Card */}
               <div className="p-4 bg-slate-950 rounded-xl border border-slate-800 flex flex-col justify-between space-y-3">
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-sm text-white flex items-center gap-1.5">
                       <Download className="w-4 h-4 text-emerald-400" />
-                      <span>Windows Setup (.exe)</span>
+                      <span>Windows .bat Launcher</span>
                     </span>
                     <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-900 border border-slate-800 text-slate-300">
-                      NSIS Installer
+                      start-windows.bat
                     </span>
                   </div>
                   <p className="text-slate-400 text-[11px] leading-relaxed">
-                    Full installer with desktop icon, Start Menu shortcuts, file associations (`.vbp`, `.oto`), and clean uninstaller.
+                    Double-click to launch! Uses native Windows PowerShell or Python to start a local server and automatically opens your browser. No Node.js or runtimes required.
                   </p>
                   <div className="font-mono text-[10px] text-slate-500 truncate pt-1">
-                    Artifact: VLabeler-Next-Setup-1.0.0-x64.exe
+                    Package: labello-portable-webui.zip
                   </div>
                 </div>
 
@@ -109,28 +109,28 @@ npm run dist:win`;
                   className="w-full flex items-center justify-center gap-1.5 py-2 px-3 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-semibold rounded-md shadow-sm transition-colors text-center"
                 >
                   <Download className="w-3.5 h-3.5" />
-                  <span>Download Setup.exe</span>
+                  <span>Download Portable WebUI (.zip)</span>
                   <ExternalLink className="w-3 h-3 opacity-70" />
                 </a>
               </div>
 
-              {/* Portable .exe Card */}
+              {/* Mac & Linux Shell Script Card */}
               <div className="p-4 bg-slate-950 rounded-xl border border-slate-800 flex flex-col justify-between space-y-3">
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-sm text-white flex items-center gap-1.5">
                       <FolderArchive className="w-4 h-4 text-indigo-400" />
-                      <span>Portable Edition (.exe)</span>
+                      <span>macOS & Linux Launcher</span>
                     </span>
                     <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-900 border border-slate-800 text-slate-300">
-                      Zero-Install
+                      start-mac-linux.sh
                     </span>
                   </div>
                   <p className="text-slate-400 text-[11px] leading-relaxed">
-                    Single self-contained `.exe` file. Carry on a USB flash drive and run instantly without administrator privileges.
+                    Run <code className="text-slate-300 font-mono">./start-mac-linux.sh</code> in terminal. Uses system Python 3 to serve the local WebUI and opens Safari, Chrome, or Firefox instantly.
                   </p>
                   <div className="font-mono text-[10px] text-slate-500 truncate pt-1">
-                    Artifact: VLabeler-Next-Portable-1.0.0-x64.exe
+                    Compatible with: macOS 11+, Ubuntu, Debian, Fedora, Arch
                   </div>
                 </div>
 
@@ -141,22 +141,20 @@ npm run dist:win`;
                   className="w-full flex items-center justify-center gap-1.5 py-2 px-3 bg-slate-800 hover:bg-slate-700 active:bg-slate-900 text-slate-200 font-semibold rounded-md border border-slate-700 transition-colors text-center"
                 >
                   <Download className="w-3.5 h-3.5 text-slate-400" />
-                  <span>Download Portable .exe</span>
+                  <span>Download Universal Zip</span>
                   <ExternalLink className="w-3 h-3 opacity-70" />
                 </a>
               </div>
             </div>
           </div>
 
-          {/* Windows SmartScreen Notice */}
-          <div className="p-3.5 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-start gap-3">
-            <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+          {/* Why Local Browser WebUI is Superior */}
+          <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-start gap-3">
+            <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
             <div className="space-y-1">
-              <span className="font-bold text-amber-300">Windows SmartScreen Note</span>
-              <p className="text-[11px] text-amber-200/80 leading-relaxed">
-                Because open-source community builds are self-signed, Windows Defender SmartScreen may display: 
-                <span className="font-mono bg-amber-950/60 px-1 py-0.5 rounded mx-1 text-amber-200">"Windows protected your PC"</span>.
-                Click <strong>"More info"</strong> and then <strong>"Run anyway"</strong> to install.
+              <span className="font-bold text-emerald-300">Why the Local Browser WebUI Architecture Wins</span>
+              <p className="text-[11px] text-emerald-200/80 leading-relaxed">
+                Modern browsers already have full JavaScript, Web Audio, and Canvas acceleration built in. Running as a local WebUI eliminates heavy Electron dependencies, prevents OS code-signing warnings, and works seamlessly across Windows, Mac, and Linux with 100% offline privacy.
               </p>
             </div>
           </div>
@@ -166,13 +164,13 @@ npm run dist:win`;
             <div className="flex items-center justify-between">
               <span className="font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5 text-xs">
                 <Terminal className="w-3.5 h-3.5 text-indigo-400" />
-                <span>How to Trigger an Automated GitHub Release</span>
+                <span>Automated GitHub Actions CI/CD Pipeline</span>
               </span>
               <span className="text-[10px] font-mono text-indigo-400">CI/CD: .github/workflows/release.yml</span>
             </div>
 
             <p className="text-slate-400 text-[11px] leading-relaxed">
-              Whenever you push your repository to GitHub, you can generate a new Windows release with attached `.exe` installers in two ways:
+              Whenever you push your repository to GitHub, the workflow automatically builds the web distribution and creates a downloadable release ZIP:
             </p>
 
             <div className="space-y-2">
@@ -195,18 +193,18 @@ npm run dist:win`;
               <div className="p-2.5 bg-slate-900 border border-slate-800 rounded-lg text-slate-400 text-[11px]">
                 <strong className="text-slate-200">Method B: Manual GitHub Actions Dispatch</strong>
                 <p className="mt-0.5">
-                  Navigate to the <strong>Actions</strong> tab in your GitHub repository, select <strong>"Build and Release Windows Executables"</strong>, and click <strong>"Run workflow"</strong>. The workflow will automatically compile the Windows `.exe` and create the release with download assets.
+                  Navigate to the <strong>Actions</strong> tab in your GitHub repository, select <strong>"Build and Release Portable WebUI"</strong>, and click <strong>"Run workflow"</strong>. The workflow will automatically package `labello-portable-webui.zip` and publish it to GitHub Releases.
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Building Locally on Windows */}
+          {/* Building Locally */}
           <div className="p-4 bg-slate-950 rounded-xl border border-slate-800 space-y-2">
             <div className="flex items-center justify-between">
               <span className="font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5 text-xs">
                 <FileCode2 className="w-3.5 h-3.5 text-indigo-400" />
-                <span>Build the .exe Locally on Windows</span>
+                <span>Build & Run Locally</span>
               </span>
               <button
                 onClick={() => copyToClipboard(localBuildCommands, 'local')}
@@ -220,7 +218,7 @@ npm run dist:win`;
               {localBuildCommands}
             </pre>
             <p className="text-[11px] text-slate-400">
-              Output executables are placed in the <code className="text-slate-300 bg-slate-900 px-1 py-0.5 rounded font-mono">./release/</code> folder.
+              Run <code className="text-slate-300 bg-slate-900 px-1 py-0.5 rounded font-mono">start-windows.bat</code> on Windows or <code className="text-slate-300 bg-slate-900 px-1 py-0.5 rounded font-mono">./start-mac-linux.sh</code> on Mac/Linux.
             </p>
           </div>
 

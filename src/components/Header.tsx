@@ -329,10 +329,10 @@ export const Header: React.FC<HeaderProps> = ({
           id="releases-btn"
           onClick={onOpenReleases}
           className="flex items-center gap-1.5 bg-indigo-950/80 hover:bg-indigo-900/80 text-indigo-200 text-xs font-semibold px-3 py-1.5 rounded-md border border-indigo-700/60 transition-all shadow-xs"
-          title="Windows .exe Installer & Releases"
+          title="Portable Local WebUI (.bat / .sh) & Releases"
         >
           <Package className="w-3.5 h-3.5 text-indigo-400" />
-          <span>Windows .exe</span>
+          <span>Local WebUI</span>
         </button>
       </div>
     </header>
