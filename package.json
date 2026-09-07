@@ -14,7 +14,8 @@
     "preview": "vite preview",
     "clean": "rm -rf dist server.js release",
     "dist:win": "vite build && electron-builder --win nsis portable --config electron-builder.json",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "test": "tsx tests/phase2.test.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

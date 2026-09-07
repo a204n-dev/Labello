@@ -37,6 +37,7 @@ interface HeaderProps {
   onOpenReleases: () => void;
   onSaveProject: () => void;
   onLoadProject: () => void;
+  onOpenAudio?: () => void;
   enableSpectrogram: boolean;
   onToggleSpectrogram: () => void;
 }
@@ -61,13 +62,45 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenReleases,
   onSaveProject,
   onLoadProject,
+  onOpenAudio,
   enableSpectrogram,
   onToggleSpectrogram,
 }) => {
+  const [fileMenuOpen, setFileMenuOpen] = React.useState(false);
   return (
     <header className="h-14 bg-slate-900 border-b border-slate-800 px-4 flex items-center justify-between select-none text-slate-200">
       {/* Left: Brand & Mode Selector */}
       <div className="flex items-center gap-4">
+        {/* Phase 2 — File menu: Open Audio / Open+Save Project */}
+        <div className="relative">
+          <button
+            id="file-menu-btn"
+            onClick={() => setFileMenuOpen((o) => !o)}
+            onBlur={() => setTimeout(() => setFileMenuOpen(false), 150)}
+            className="px-2.5 py-1 text-xs font-semibold rounded-md bg-slate-950 border border-slate-800 hover:border-slate-600 transition-colors"
+            title="File menu"
+          >
+            File
+          </button>
+          {fileMenuOpen && (
+            <div className="absolute left-0 top-8 z-50 w-56 bg-slate-900 border border-slate-700 rounded-md shadow-xl py-1 text-xs">
+              <button
+                id="file-open-audio-btn"
+                onClick={() => { setFileMenuOpen(false); onOpenAudio?.(); }}
+                className="w-full text-left px-3 py-1.5 hover:bg-slate-800"
+                title="Import WAV / FLAC / MP3 / OGG"
+              >
+                Open Audio… <span className="text-slate-500">(WAV/FLAC/MP3/OGG)</span>
+              </button>
+              <button onClick={() => { setFileMenuOpen(false); onLoadProject(); }} className="w-full text-left px-3 py-1.5 hover:bg-slate-800">
+                Open Project (.vbp)…
+              </button>
+              <button onClick={() => { setFileMenuOpen(false); onSaveProject(); }} className="w-full text-left px-3 py-1.5 hover:bg-slate-800">
+                Save Project (.vbp) <span className="text-slate-500">(Ctrl+S)</span>
+              </button>
+            </div>
+          )}
+        </div>
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white shadow-sm shadow-indigo-500/30">
             <AudioWaveform className="w-5 h-5" />

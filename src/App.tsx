@@ -268,24 +268,45 @@ export default function App() {
     setBatchStage('Batch processing completed.');
   };
 
-  // Import local audio files (drag-and-drop or file selector)
+  // Phase 2 — Import with validation + friendly errors + project registration.
+  // Never modifies the original file; decodes a copy into memory.
+  const [importErrors, setImportErrors] = useState<string[]>([]);
   const handleAddFiles = async (newAudioFiles: File[]) => {
+    const { validateAudioFile, buildMetadata } = await import('./services/audio/audioMetadata');
     const imported: AudioFileItem[] = [];
+    const errors: string[] = [];
 
     for (const file of newAudioFiles) {
+      const verdict = validateAudioFile(file);
+      if (!verdict.ok) {
+        errors.push(verdict.friendlyMessage || `Skipped "${file.name}".`);
+        continue;
+      }
       try {
         const arrayBuf = await file.arrayBuffer();
-        const audioBuf = await decodeAudioData(arrayBuf);
+        let audioBuf;
+        try {
+          audioBuf = await decodeAudioData(arrayBuf);
+        } catch {
+          errors.push(`Could not decode "${file.name}" — it may be corrupt or use an unusual codec. Try re-exporting as 16-bit WAV.`);
+          continue;
+        }
+        const { metadata, error } = await buildMetadata(file, audioBuf);
+        if (!metadata || error) {
+          errors.push(error || `Could not read "${file.name}".`);
+          continue;
+        }
         const peaks = extractPeaks(audioBuf, 1200);
-        const alias = file.name.replace(/\.[^/.]+$/, "");
+        const alias = file.name.replace(/\.[^/.]+$/, '');
+        const id = `file_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
 
         imported.push({
-          id: `file_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-          name: file.name,
-          sizeBytes: file.size,
-          durationMs: Math.round(audioBuf.duration * 1000),
-          sampleRate: audioBuf.sampleRate,
-          channels: audioBuf.numberOfChannels,
+          id,
+          name: metadata.fileName,
+          sizeBytes: metadata.sizeBytes,
+          durationMs: metadata.durationMs,
+          sampleRate: metadata.sampleRate,
+          channels: metadata.channels,
           audioBuffer: audioBuf,
           waveformPeaks: peaks,
           status: 'pending',
@@ -296,9 +317,18 @@ export default function App() {
           lastModified: Date.now(),
           userModified: false,
         });
+
+        // Note: lightweight project registration (path + hash + metadata,
+        // no waveform blobs) is persisted in the snapshot below.
       } catch (err) {
-        console.error('Failed to decode audio file:', file.name, err);
+        console.error('Failed to import audio file:', file.name, err);
+        errors.push(`Something went wrong importing "${file.name}". It was skipped so the app stays running.`);
       }
+    }
+
+    setImportErrors(errors);
+    if (errors.length > 0) {
+      console.warn('Audio import issues:', errors);
     }
 
     if (imported.length > 0) {
@@ -306,6 +336,34 @@ export default function App() {
       setFiles(merged);
       setActiveFileId(imported[0].id);
       pushHistory(merged);
+      // Persist lightweight snapshot (Phase 2 project integration)
+      try {
+        const { autosaveSnapshot: save } = await import('./services/audio/projectStore');
+        save(
+          merged.map((f) => ({
+            id: f.id,
+            fileName: f.name,
+            filePath: f.name,
+            fileHash: `${f.sizeBytes}-${f.durationMs}`,
+            metadata: {
+              fileName: f.name,
+              fullPath: f.name,
+              durationMs: f.durationMs,
+              sampleRate: f.sampleRate,
+              channels: f.channels,
+              bitDepth: null,
+              format: 'UNKNOWN',
+              numSamples: Math.round((f.durationMs / 1000) * f.sampleRate),
+              sizeBytes: f.sizeBytes,
+              fileHash: `${f.sizeBytes}-${f.durationMs}`,
+            },
+            status: f.status,
+            aliasOrLyrics: f.alias || f.lyrics || '',
+            addedAt: f.lastModified,
+          })),
+          imported[0].id
+        );
+      } catch { /* non-fatal */ }
       analyzeFilesBatch(imported, mode);
     }
   };
@@ -507,9 +565,33 @@ export default function App() {
         onOpenReleases={() => setIsReleasesOpen(true)}
         onSaveProject={handleSaveProject}
         onLoadProject={handleLoadProject}
+        onOpenAudio={() => {
+          const input = document.createElement('input');
+          input.type = 'file';
+          input.multiple = true;
+          input.accept = 'audio/*,.wav,.flac,.mp3,.ogg,.oga,.m4a';
+          input.onchange = () => {
+            if (input.files && input.files.length > 0) handleAddFiles(Array.from(input.files));
+          };
+          input.click();
+        }}
         enableSpectrogram={settings.enableSpectrogram}
         onToggleSpectrogram={() => setSettings(s => ({ ...s, enableSpectrogram: !s.enableSpectrogram }))}
       />
+
+      {/* Friendly import-error banner (Phase 2: never crash on a bad file) */}
+      {importErrors.length > 0 && (
+        <div className="bg-amber-950/90 border-b border-amber-800/60 px-4 py-2 text-xs text-amber-200 flex items-start justify-between gap-3">
+          <div className="space-y-0.5">
+            {importErrors.map((msg, i) => (
+              <div key={i}>⚠ {msg}</div>
+            ))}
+          </div>
+          <button onClick={() => setImportErrors([])} className="shrink-0 px-2 py-0.5 bg-amber-900 hover:bg-amber-800 rounded text-amber-100 font-semibold">
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {/* Main Workspace Layout (Left: Explorer, Center: Waveform, Right: Inspector) */}
       <div className="flex-1 flex overflow-hidden">

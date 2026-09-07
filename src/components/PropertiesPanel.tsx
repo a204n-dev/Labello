@@ -77,7 +77,17 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
       <div className="p-3 border-b border-slate-800/80 space-y-2.5">
         <div>
           <label className="text-[10px] uppercase font-semibold text-slate-500">File Name</label>
-          <div className="font-mono text-xs text-slate-200 mt-0.5 truncate">{activeFile.name}</div>
+          <div className="font-mono text-xs text-slate-200 mt-0.5 truncate" title={activeFile.name}>{activeFile.name}</div>
+        </div>
+
+        {/* Phase 2 — Audio metadata (read-only facts about the file) */}
+        <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px] font-mono bg-slate-900/60 border border-slate-800/60 rounded p-2">
+          <span className="text-slate-500">Duration</span><span className="text-slate-200 text-right">{(activeFile.durationMs / 1000).toFixed(3)}s</span>
+          <span className="text-slate-500">Sample rate</span><span className="text-slate-200 text-right">{activeFile.sampleRate} Hz</span>
+          <span className="text-slate-500">Channels</span><span className="text-slate-200 text-right">{activeFile.channels === 1 ? '1 (mono)' : `${activeFile.channels} (stereo)`}</span>
+          <span className="text-slate-500">Samples</span><span className="text-slate-200 text-right">{Math.round((activeFile.durationMs / 1000) * activeFile.sampleRate).toLocaleString()}</span>
+          <span className="text-slate-500">Size</span><span className="text-slate-200 text-right">{(activeFile.sizeBytes / 1024).toFixed(1)} KB</span>
+          <span className="text-slate-500">Status</span><span className="text-slate-200 text-right">{activeFile.status}</span>
         </div>
 
         {mode === 'utau' ? (

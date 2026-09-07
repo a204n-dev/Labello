@@ -47,9 +47,14 @@ export const SidebarFileList: React.FC<SidebarFileListProps> = ({
     e.preventDefault();
     setIsDragging(false);
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      const droppedFiles = (Array.from(e.dataTransfer.files) as File[]).filter(f => 
-        f.type.startsWith('audio/') || f.name.endsWith('.wav') || f.name.endsWith('.mp3')
-      );
+      const droppedFiles = (Array.from(e.dataTransfer.files) as File[]).filter(f => {
+        const n = f.name.toLowerCase();
+        return (
+          f.type.startsWith('audio/') ||
+          n.endsWith('.wav') || n.endsWith('.mp3') || n.endsWith('.flac') ||
+          n.endsWith('.ogg') || n.endsWith('.oga') || n.endsWith('.m4a')
+        );
+      });
       if (droppedFiles.length > 0) {
         onAddFiles(droppedFiles);
       }
@@ -120,7 +125,7 @@ export const SidebarFileList: React.FC<SidebarFileListProps> = ({
           <input
             type="file"
             multiple
-            accept="audio/*,.wav,.mp3,.ogg,.flac"
+            accept="audio/*,.wav,.flac,.mp3,.ogg,.oga,.m4a"
             ref={fileInputRef}
             onChange={handleFileInputChange}
             className="hidden"
