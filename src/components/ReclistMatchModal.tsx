@@ -5,8 +5,8 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { X, Download, FileText, AlertCircle, CheckCircle, Search, ChevronDown, Filter, Copy } from 'lucide-react';
-import { AudioFileItem, ParsedOtoEntry } from '../../types/workstation';
-import { parseReclist, matchAll, formatMatchReport, exportMatchCsv, ReclistEntry, MatchResult } from '../../services/reclist/reclistParser';
+import { AudioFileItem, ParsedOtoEntry } from '../types/workstation';
+import { parseReclist, matchAll, formatMatchReport, exportMatchCsv, ReclistEntry, MatchResult } from '../services/reclist/reclistParser';
 
 interface ReclistMatchModalProps {
   isOpen: boolean;

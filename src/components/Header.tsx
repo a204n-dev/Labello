@@ -65,6 +65,8 @@ export const Header: React.FC<HeaderProps> = ({
   onSaveProject,
   onLoadProject,
   onOpenAudio,
+  onImportOto,
+  onOpenReclistMatch,
   enableSpectrogram,
   onToggleSpectrogram,
 }) => {

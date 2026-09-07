@@ -23,6 +23,7 @@ import {
   formatComparisonTable,
   compareBatch,
 } from '../src/services/oto/otoUpdater';
+import { AcousticFeatures } from '../src/services/dsp/spectralAnalysis';
 
 let passed = 0;
 function check(name: string, fn: () => void) {
@@ -37,21 +38,15 @@ function check(name: string, fn: () => void) {
 }
 
 // ---- Sample acoustic features for testing ----
-function makeFeatures(overrides: Partial<{
-  consonantOnsetCandidateMs: number;
-  vowelOnsetCandidateMs: number;
-  decayOffsetCandidateMs: number;
-  timeStepMs: number;
-  spectralCentroid: Float32Array;
-  zeroCrossingRate: Float32Array;
-  rmsEnergy: Float32Array;
-}> = {}) {
+function makeFeatures(overrides: Partial<AcousticFeatures> = {}): AcousticFeatures {
   const frames = 100;
   return {
     timeStepMs: 5,
     consonantOnsetCandidateMs: 120,
     vowelOnsetCandidateMs: 220,
     decayOffsetCandidateMs: 950,
+    silenceThreshold: 0.05,
+    f0Contour: new Float32Array(frames).fill(220),
     rmsEnergy: new Float32Array(frames).fill(0.5),
     zeroCrossingRate: new Float32Array(frames).fill(0.1),
     spectralCentroid: new Float32Array(frames).fill(2000),

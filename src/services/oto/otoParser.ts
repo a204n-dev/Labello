@@ -18,7 +18,7 @@ export interface ParseResult {
   entries: ParsedOtoEntry[];
   errors: string[];
   warnings: string[];
-  encoding: 'UTF-8' | 'Shift-JIS' | 'UTF-8-BOM' | 'unknown';
+  encoding: 'UTF-8' | 'Shift-JIS' | 'UTF-8-BOM' | 'UTF-16-LE' | 'UTF-16-BE' | 'unknown';
 }
 
 /** Detect file encoding from BOM or heuristics. */
@@ -44,6 +44,12 @@ export function decodeOtoContent(buffer: Uint8Array): { text: string; encoding: 
   if (encoding === 'UTF-8-BOM') {
     text = new TextDecoder('utf-8').decode(buffer);
     usedEncoding = 'UTF-8-BOM';
+  } else if (encoding === 'UTF-16-LE') {
+    text = new TextDecoder('utf-16le').decode(buffer);
+    usedEncoding = 'UTF-16-LE';
+  } else if (encoding === 'UTF-16-BE') {
+    text = new TextDecoder('utf-16be').decode(buffer);
+    usedEncoding = 'UTF-16-BE';
   } else {
     try {
       text = new TextDecoder('utf-8', { fatal: true }).decode(buffer);

@@ -5,11 +5,10 @@
 
 import React, { useState, useRef } from 'react';
 import { X, Upload, FileText, AlertCircle, CheckCircle, HelpCircle, Sliders } from 'lucide-react';
-import { OtoParameters, ParsedOtoEntry } from '../../types/workstation';
-import { parseOtoIni, ParsedOtoEntry as ParsedEntry } from '../../services/oto/otoParser';
-import { compareBatch, formatComparisonTable, OtoComparisonResult } from '../../services/oto/otoUpdater';
-import { matchReimportedFile } from '../../services/audio/projectStore';
-import { AudioFileItem } from '../../types/workstation';
+import { OtoParameters, ParsedOtoEntry, AudioFileItem } from '../types/workstation';
+import { parseOtoIni, ParsedOtoEntry as ParsedEntry } from '../services/oto/otoParser';
+import { compareBatch, formatComparisonTable, OtoComparisonResult } from '../services/oto/otoUpdater';
+import { matchReimportedFile } from '../services/audio/projectStore';
 
 interface ImportOtoModalProps {
   isOpen: boolean;

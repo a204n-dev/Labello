@@ -89,7 +89,6 @@ export function compareOto(
 
   // Determine merged OTO based on mode
   const mergedOto = base ? { ...base } : { ...generated };
-  // In 'generate' or 'update', we'll use the comparison to decide later
 
   const validation = validateOto(generated, durationMs);
 
@@ -97,7 +96,7 @@ export function compareOto(
     fileName,
     alias,
     changes,
-    mergedOto: generated, // default to generated; caller decides
+    mergedOto,
     validation,
     baseConfidence,
     generatedConfidence,
@@ -111,7 +110,8 @@ export function applyOtoChanges(
   options: OtoUpdateOptions,
   acceptedParams: Set<keyof OtoParameters> = new Set()
 ): OtoParameters {
-  const { baseConfidence, generatedConfidence, changes, mode } = comparison;
+  const { changes } = comparison;
+  const mode = options.mode || comparison.mode;
   const threshold = options.hybridConfidenceThreshold ?? 75;
   const result = { ...comparison.mergedOto };
 
@@ -124,11 +124,11 @@ export function applyOtoChanges(
         break;
       case 'update':
         // In update mode, only apply if user accepted this param
-        shouldApply = acceptedParams.has(change.param) || options.autoAccept;
+        shouldApply = acceptedParams.has(change.param) || Boolean(options.autoAccept);
         break;
       case 'hybrid':
         // Auto-apply high-confidence changes; others need acceptance
-        shouldApply = change.confidence >= threshold || acceptedParams.has(change.param) || options.autoAccept;
+        shouldApply = change.confidence >= threshold || acceptedParams.has(change.param) || Boolean(options.autoAccept);
         break;
     }
 

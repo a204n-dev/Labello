@@ -95,8 +95,15 @@ export function parseReclist(buffer: Uint8Array): ReclistParseResult {
     if (parts.length === 0) return;
 
     alias = parts[0];
-    if (parts.length >= 2) phoneme = parts[1];
-    if (parts.length >= 3) expectedFileName = parts[2];
+    if (parts.length >= 2) {
+      const lastPart = parts[parts.length - 1];
+      if (parts.length >= 3 && /\.(wav|flac|mp3|ogg)$/i.test(lastPart)) {
+        expectedFileName = lastPart;
+        phoneme = parts.slice(1, -1).join(' ');
+      } else {
+        phoneme = parts.slice(1).join(' ');
+      }
+    }
 
     // If alias looks like a filename, extract alias from it
     if (alias.endsWith('.wav') || alias.endsWith('.WAV')) {
@@ -122,13 +129,17 @@ export function parseReclist(buffer: Uint8Array): ReclistParseResult {
 }
 
 /** Build filename candidates for an alias (common naming patterns). */
-function generateCandidates(alias: string, prefix = '', suffix = ''): string[] {
+export function generateCandidates(alias: string, prefix = '', suffix = ''): string[] {
   const base = alias.replace(/[\\/:*?"<>|]/g, '_'); // sanitize
+  const upper = base.toUpperCase();
   const exts = ['.wav', '.WAV', '.flac', '.FLAC', '.mp3', '.MP3', '.ogg', '.OGG'];
   const candidates: string[] = [];
 
-  // Standard: alias.wav
-  for (const ext of exts) candidates.push(`${base}${ext}`);
+  // Standard: alias.ext and uppercase
+  for (const ext of exts) {
+    candidates.push(`${base}${ext}`);
+    candidates.push(`${upper}${ext}`);
+  }
 
   // Prefixed: prefix_alias.wav
   if (prefix) for (const ext of exts) candidates.push(`${prefix}_${base}${ext}`);
@@ -144,11 +155,15 @@ function generateCandidates(alias: string, prefix = '', suffix = ''): string[] {
 }
 
 /** Fuzzy match score (0-100) between two strings. */
-function fuzzyScore(a: string, b: string): number {
-  const sa = a.toLowerCase().replace(/[_\-\s]/g, '');
-  const sb = b.toLowerCase().replace(/[_\-\s]/g, '');
-  if (sa === sb) return 100;
-  if (sa.includes(sb) || sb.includes(sa)) return 85;
+export function fuzzyScore(a: string, b: string): number {
+  const la = a.toLowerCase();
+  const lb = b.toLowerCase();
+  if (la === lb) return 100;
+
+  const sa = la.replace(/[_\-\s]/g, '');
+  const sb = lb.replace(/[_\-\s]/g, '');
+  if (sa === sb) return 85;
+  if (sa.includes(sb) || sb.includes(sa)) return 80;
 
   // Levenshtein distance normalized
   const len = Math.max(sa.length, sb.length);
@@ -194,17 +209,23 @@ export function matchAll(
     const issues: string[] = [];
 
     // Try exact filename match
+    const directWav = `${r.alias.toLowerCase()}.wav`;
     if (expected && audioByName.has(expected)) {
       audioFile = audioByName.get(expected);
+      match = 'exact';
+      confidence = 100;
+    } else if (audioByName.has(directWav)) {
+      audioFile = audioByName.get(directWav);
       match = 'exact';
       confidence = 100;
     } else {
       // Try candidates
       for (const cand of candidates) {
-        if (audioByName.has(cand.toLowerCase())) {
-          audioFile = audioByName.get(cand.toLowerCase())!;
+        const key = cand.toLowerCase();
+        if (audioByName.has(key)) {
+          audioFile = audioByName.get(key)!;
           match = 'exact';
-          confidence = 95;
+          confidence = key === directWav ? 100 : 95;
           break;
         }
       }

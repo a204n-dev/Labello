@@ -26,6 +26,14 @@ export interface OtoParameters {
   cutoffMs: number; // In UTAU: negative value means cutoff from sample end, positive from offset
 }
 
+export interface ParsedOtoEntry {
+  fileName: string;
+  alias: string;
+  oto: OtoParameters;
+  rawLine: string;
+  lineNumber: number;
+}
+
 export interface DiffSingerPhoneme {
   id: string;
   phoneme: string;
