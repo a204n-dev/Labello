@@ -528,35 +528,35 @@ export const WaveformWorkspace: React.FC<WaveformWorkspaceProps> = ({
       </div>
 
       {/* Transport */}
-      <div className="min-h-12 bg-slate-950 border-t border-slate-800 px-4 py-1.5 flex items-center justify-between text-slate-300 flex-wrap gap-2">
-        <div className="flex items-center gap-2">
-          <button id="play-btn" onClick={handlePlay} disabled={isPlaying} className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white rounded-md text-xs font-semibold shadow-sm transition-all" title="Play from cursor (Space)">
-            <Play className="w-3.5 h-3.5" /><span>Play</span>
+      <div className="h-[var(--toolbar-height)] bg-bg-secondary border-t border-border-subtle px-4 flex items-center justify-between text-text-secondary flex-wrap gap-2">
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <button id="play-btn" onClick={handlePlay} disabled={isPlaying} className="flex items-center gap-1.5 px-3 py-1.5 bg-mode-utau hover:bg-mode-utau/90 disabled:opacity-40 text-white rounded-md text-xs font-semibold shadow-sm transition-all" title="Play from cursor (Space)">
+            <Play className="w-3.5 h-3.5" /><span className="hidden sm:inline">Play</span>
           </button>
-          <button id="pause-btn" onClick={handlePause} disabled={!isPlaying} className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-slate-200 rounded-md text-xs font-semibold transition-all" title="Pause (Space)">
-            <Pause className="w-3.5 h-3.5" /><span>Pause{isPaused ? 'd' : ''}</span>
+          <button id="pause-btn" onClick={handlePause} disabled={!isPlaying} className="flex items-center gap-1.5 px-3 py-1.5 bg-bg-tertiary hover:bg-bg-hover disabled:opacity-40 text-text-secondary rounded-md text-xs font-semibold transition-all" title="Pause (Space)">
+            <Pause className="w-3.5 h-3.5" /><span className="hidden sm:inline">Pause</span>
           </button>
-          <button id="stop-audio-btn" onClick={handleStop} className="p-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-md text-slate-400 hover:text-slate-200 transition-colors" title="Stop">
+          <button id="stop-audio-btn" onClick={handleStop} className="p-1.5 bg-bg-tertiary hover:bg-bg-hover border border-border-subtle rounded-md text-text-secondary hover:text-text-primary transition-colors" title="Stop">
             <Square className="w-3.5 h-3.5" />
           </button>
-          <div className="h-4 w-[1px] bg-slate-800 mx-1" />
-          <div className="text-xs font-mono text-slate-300 bg-slate-900 px-2 py-1 rounded border border-slate-800" title="Current position / total duration">
+          <div className="h-4 w-px bg-border-subtle mx-1 hidden sm:block" />
+          <div className="text-xs font-mono text-text-secondary bg-bg-tertiary px-2 py-1 rounded border border-border-subtle" title="Current position / total duration">
             <span>{formatTimecode(currentTimeMs)}</span> / <span>{formatTimecode(durationMs)}</span>
           </div>
-          <div className="hidden md:flex items-center gap-1.5 text-xs text-slate-400" title="Volume">
+          <div className="hidden md:flex items-center gap-1.5 text-xs text-text-muted" title="Volume">
             <Volume2 className="w-3.5 h-3.5" />
-            <input id="volume-slider" type="range" min={0} max={1} step={0.01} value={volume} onChange={(e) => setVolume(Number(e.target.value))} className="w-20 accent-indigo-500" />
+            <input id="volume-slider" type="range" min={0} max={1} step={0.01} value={volume} onChange={(e) => setVolume(Number(e.target.value))} className="w-20 accent-mode-utau" />
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <span className="hidden lg:block text-[10px] text-slate-600 font-mono">Space Play/Pause • Home/End • ←/→ ±10ms (Shift ±100ms) • Ctrl+Wheel Zoom</span>
-          <div className="flex items-center bg-slate-900 border border-slate-800 rounded-md p-0.5">
-            <button id="zoom-out-btn" onClick={() => setZoom((z) => Math.max(1, +(z - 0.5).toFixed(2)))} className="p-1 text-slate-400 hover:text-slate-200 rounded" title="Zoom Out"><ZoomOut className="w-3.5 h-3.5" /></button>
-            <span className="px-2 text-[11px] font-mono text-slate-400 font-medium">{zoom.toFixed(1)}x</span>
-            <button id="zoom-in-btn" onClick={() => setZoom((z) => Math.min(8, +(z + 0.5).toFixed(2)))} className="p-1 text-slate-400 hover:text-slate-200 rounded" title="Zoom In (or Ctrl+Wheel)"><ZoomIn className="w-3.5 h-3.5" /></button>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <span className="hidden xl:block text-[10px] text-text-muted font-mono">Space Play/Pause \u2022 Home/End \u2022 \u2190/\u2192 \u00b110ms (Shift \u00b1100ms) \u2022 Ctrl+Wheel Zoom</span>
+          <div className="flex items-center bg-bg-tertiary border border-border-subtle rounded-lg p-0.5">
+            <button id="zoom-out-btn" onClick={() => setZoom((z) => Math.max(1, +(z - 0.5).toFixed(2)))} className="p-1 text-text-secondary hover:text-text-primary rounded" title="Zoom Out"><ZoomOut className="w-3.5 h-3.5" /></button>
+            <span className="px-2 text-[10px] font-mono text-text-muted font-medium">{zoom.toFixed(1)}x</span>
+            <button id="zoom-in-btn" onClick={() => setZoom((z) => Math.min(8, +(z + 0.5).toFixed(2)))} className="p-1 text-text-secondary hover:text-text-primary rounded" title="Zoom In (or Ctrl+Wheel)"><ZoomIn className="w-3.5 h-3.5" /></button>
           </div>
-          <button id="zoom-fit-btn" onClick={() => setZoom(1)} className="p-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-md text-slate-400 hover:text-slate-200 text-xs" title="Fit entire audio"><Maximize2 className="w-3.5 h-3.5" /></button>
+          <button id="zoom-fit-btn" onClick={() => setZoom(1)} className="p-1.5 bg-bg-tertiary hover:bg-bg-hover border border-border-subtle rounded-md text-text-secondary hover:text-text-primary text-xs" title="Fit entire audio"><Maximize2 className="w-3.5 h-3.5" /></button>
         </div>
       </div>
     </div>

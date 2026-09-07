@@ -1,18 +1,22 @@
-import React from 'react';
-import { 
-  AudioWaveform, 
-  Settings2, 
-  Download, 
-  Sparkles, 
-  CheckCircle2, 
-  AlertTriangle, 
+import React, { useState } from 'react';
+import {
+  AudioWaveform,
+  Settings2,
+  Download,
+  Sparkles,
+  CheckCircle2,
+  AlertTriangle,
   Sliders,
   FolderOpen,
   Save,
   RotateCcw,
   RotateCw,
   Eye,
-  Package
+  Package,
+  Menu,
+  ChevronDown,
+  HelpCircle,
+  Keyboard,
 } from 'lucide-react';
 import { WorkstationMode, VoicebankProfileId } from '../types/workstation';
 import { VOICEBANK_PROFILES } from '../services/oto/otoProfiles';
@@ -42,7 +46,26 @@ interface HeaderProps {
   onOpenReclistMatch?: () => void;
   enableSpectrogram: boolean;
   onToggleSpectrogram: () => void;
+  onToggleSidebar?: () => void;
+  onToggleProperties?: () => void;
+  sidebarOpen?: boolean;
+  propertiesOpen?: boolean;
 }
+
+const SHORTCUTS = [
+  { key: 'Space', desc: 'Play / Pause' },
+  { key: 'A', desc: 'Accept / Verify' },
+  { key: 'Tab', desc: 'Next Review Item' },
+  { key: 'Ctrl+Z', desc: 'Undo' },
+  { key: 'Ctrl+Y', desc: 'Redo' },
+  { key: '←/→', desc: 'Seek ±10ms' },
+  { key: 'Shift+←/→', desc: 'Seek ±100ms' },
+  { key: 'Home/End', desc: 'Start / End' },
+  { key: 'Ctrl+Wheel', desc: 'Zoom' },
+  { key: 'B', desc: 'Toggle Sidebar' },
+  { key: 'P', desc: 'Toggle Properties' },
+  { key: '?', desc: 'Show Shortcuts' },
+];
 
 export const Header: React.FC<HeaderProps> = ({
   mode,
@@ -69,272 +92,193 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenReclistMatch,
   enableSpectrogram,
   onToggleSpectrogram,
+  onToggleSidebar,
+  onToggleProperties,
+  sidebarOpen = true,
+  propertiesOpen = true,
 }) => {
-  const [fileMenuOpen, setFileMenuOpen] = React.useState(false);
+  const [fileMenuOpen, setFileMenuOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [viewMenuOpen, setViewMenuOpen] = useState(false);
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === '?' && e.shiftKey) {
+      e.preventDefault();
+      setShortcutsOpen(!shortcutsOpen);
+    }
+    if (e.key === 'Escape') {
+      setFileMenuOpen(false);
+      setViewMenuOpen(false);
+      setShortcutsOpen(false);
+    }
+  };
+
+  React.useEffect(() => {
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [shortcutsOpen]);
+
   return (
-    <header className="h-14 bg-slate-900 border-b border-slate-800 px-4 flex items-center justify-between select-none text-slate-200">
-      {/* Left: Brand & Mode Selector */}
-      <div className="flex items-center gap-4">
-        {/* Phase 2 — File menu: Open Audio / Open+Save Project */}
-        <div className="relative">
-          <button
-            id="file-menu-btn"
-            onClick={() => setFileMenuOpen((o) => !o)}
-            onBlur={() => setTimeout(() => setFileMenuOpen(false), 150)}
-            className="px-2.5 py-1 text-xs font-semibold rounded-md bg-slate-950 border border-slate-800 hover:border-slate-600 transition-colors"
-            title="File menu"
-          >
-            File
-          </button>
-          {fileMenuOpen && (
-            <div className="absolute left-0 top-8 z-50 w-56 bg-slate-900 border border-slate-700 rounded-md shadow-xl py-1 text-xs">
-              <button
-                id="file-open-audio-btn"
-                onClick={() => { setFileMenuOpen(false); onOpenAudio?.(); }}
-                className="w-full text-left px-3 py-1.5 hover:bg-slate-800"
-                title="Import WAV / FLAC / MP3 / OGG"
-              >
-                Open Audio… <span className="text-slate-500">(WAV/FLAC/MP3/OGG)</span>
-              </button>
-              <button onClick={() => { setFileMenuOpen(false); onLoadProject(); }} className="w-full text-left px-3 py-1.5 hover:bg-slate-800">
-                Open Project (.vbp)…
-              </button>
-              <button onClick={() => { setFileMenuOpen(false); onSaveProject(); }} className="w-full text-left px-3 py-1.5 hover:bg-slate-800">
-                Save Project (.vbp) <span className="text-slate-500">(Ctrl+S)</span>
-              </button>
-              <hr className="border-slate-700 my-1" />
-              {onImportOto && (
-                <button
-                  onClick={() => { setFileMenuOpen(false); onImportOto(); }}
-                  className="w-full text-left px-3 py-1.5 hover:bg-slate-800"
-                >
-                  Import Base OTO (oto.ini)…
-                </button>
-              )}
-              {onOpenReclistMatch && (
-                <button
-                  onClick={() => { setFileMenuOpen(false); onOpenReclistMatch(); }}
-                  className="w-full text-left px-3 py-1.5 hover:bg-slate-800"
-                >
-                  Reclist Match Report…
-                </button>
-              )}
+    <>
+      <header className="h-[var(--header-height)] bg-bg-secondary border-b border-border-subtle px-4 flex items-center justify-between select-none text-text-primary" onKeyDown={handleKeyDown}>
+        {/* Left: Brand, Mode, Profile */}
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          <div className="flex items-center gap-2.5 shrink-0">
+            <div className="w-8 h-8 rounded-lg bg-mode-utau/20 border border-mode-utau/30 flex items-center justify-center text-mode-utau">
+              <AudioWaveform className="w-5 h-5" />
+            </div>
+            <div className="hidden sm:block">
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-sm tracking-tight text-text-primary">Labello</span>
+                <a href="https://github.com/sdercolin/vlabeler" target="_blank" rel="noreferrer" className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-accent-bg text-accent-text border border-accent-border">
+                  vLabeler Core
+                </a>
+              </div>
+              <p className="text-xs text-text-muted leading-none">Smart Auto-OTO & DiffSinger Studio</p>
+            </div>
+          </div>
+
+          <div className="h-5 w-px bg-border-subtle mx-1 hidden sm:block" />
+
+          {/* Mode Toggle */}
+          <div className="bg-bg-tertiary p-1 rounded-lg border border-border-subtle flex items-center gap-1 shrink-0">
+            <button onClick={() => onModeChange('utau')} className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${mode === 'utau' ? 'bg-mode-utau text-white shadow-sm' : 'text-text-secondary hover:text-text-primary'}`}>UTAU Auto-OTO</button>
+            <button onClick={() => onModeChange('diffsinger')} className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${mode === 'diffsinger' ? 'bg-mode-diffsinger text-white shadow-sm' : 'text-text-secondary hover:text-text-primary'}`}>DiffSinger Dataset</button>
+          </div>
+
+          {/* Voicebank Profile (UTAU mode) */}
+          {mode === 'utau' && (
+            <div className="flex items-center gap-2 text-xs text-text-secondary shrink-0">
+              <span className="text-text-muted font-medium">Profile:</span>
+              <select value={profileId} onChange={(e) => onProfileChange(e.target.value as VoicebankProfileId)} className="bg-bg-tertiary border border-border-subtle text-text-primary text-xs rounded-md px-2 py-1 outline-none focus:border-border-focus transition-colors min-w-[160px]">
+                {VOICEBANK_PROFILES.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
             </div>
           )}
         </div>
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white shadow-sm shadow-indigo-500/30">
-            <AudioWaveform className="w-5 h-5" />
+
+        {/* Center: Undo/Redo, View Toggles, Status */}
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Undo/Redo */}
+          <div className="flex items-center bg-bg-tertiary border border-border-subtle rounded-lg p-1">
+            <button onClick={onUndo} disabled={!canUndo} title="Undo (Ctrl+Z)" className="p-1.5 text-text-secondary hover:text-text-primary disabled:opacity-30 disabled:pointer-events-none rounded transition-colors"><RotateCcw className="w-4 h-4" /></button>
+            <button onClick={onRedo} disabled={!canRedo} title="Redo (Ctrl+Y)" className="p-1.5 text-text-secondary hover:text-text-primary disabled:opacity-30 disabled:pointer-events-none rounded transition-colors"><RotateCw className="w-4 h-4" /></button>
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-bold text-sm tracking-tight text-white">Labello / VLabeler Next</span>
-              <a
-                href="https://github.com/sdercolin/vlabeler"
-                target="_blank"
-                rel="noreferrer"
-                title="Built upon and fully compatible with sdercolin/vlabeler"
-                className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-indigo-950/80 hover:bg-indigo-900 text-indigo-300 border border-indigo-800/60 transition-colors"
-              >
-                vLabeler Core
-              </a>
+
+          <div className="w-px h-5 bg-border-subtle mx-1" />
+
+          {/* Spectrogram Toggle */}
+          <button onClick={onToggleSpectrogram} className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-lg border transition-all ${enableSpectrogram ? 'bg-state-info-bg text-state-info-text border-state-info-border' : 'bg-bg-tertiary text-text-secondary border-border-subtle hover:text-text-primary'}`} title="Toggle FFT Spectrogram (S)">
+            <Eye className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Spectrogram</span>
+          </button>
+
+          {/* Review Queue */}
+          <button onClick={onOpenReviewQueue} className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-lg border transition-all ${reviewCount > 0 ? 'bg-state-warning-bg/20 text-state-warning-text border-state-warning-border/50 hover:bg-state-warning-bg/30' : 'bg-bg-tertiary text-state-success-text border-border-subtle hover:bg-bg-hover'}`}>
+            {reviewCount > 0 ? <AlertTriangle className="w-3.5 h-3.5" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+            <span className="hidden sm:inline">Review Queue</span>
+            <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${reviewCount > 0 ? 'bg-state-warning-text text-bg-primary' : 'bg-state-success-bg text-state-success-text'}`}>{reviewCount}</span>
+          </button>
+
+          {/* Dataset Health */}
+          <button onClick={onOpenHealth} className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-lg bg-bg-tertiary border border-border-subtle text-text-secondary hover:bg-bg-hover transition-colors">
+            <Sliders className="w-3.5 h-3.5 text-mode-utau" />
+            <span className="hidden sm:inline">Health</span>
+            <span className={`font-semibold ${healthScore >= 90 ? 'text-state-success-text' : healthScore >= 70 ? 'text-state-warning-text' : 'text-state-error-text'}`}>{healthScore}/100</span>
+          </button>
+        </div>
+
+        {/* Right: Actions, File Menu, View Menu, Help */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          {/* Primary Action */}
+          <button onClick={onBatchAnalyze} disabled={isAnalyzing} className="flex items-center gap-1.5 bg-mode-utau hover:bg-mode-utau/90 active:bg-mode-utau text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-all shadow-sm shadow-mode-utau/20 disabled:opacity-50">
+            <Sparkles className={`w-3.5 h-3.5 ${isAnalyzing ? 'animate-spin' : ''}`} />
+            <span>{isAnalyzing ? 'Analyzing...' : 'Auto-Analyze All'}</span>
+          </button>
+
+          <div className="h-5 w-px bg-border-subtle mx-1 hidden sm:block" />
+
+          {/* File Menu */}
+          <div className="relative">
+            <button onClick={() => setFileMenuOpen(!fileMenuOpen)} onBlur={() => setTimeout(() => setFileMenuOpen(false), 150)} className="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-bg-tertiary border border-border-subtle hover:border-border-strong transition-colors" title="File Menu (Alt+F)">
+              <Menu className="w-4 h-4" />
+            </button>
+            {fileMenuOpen && (
+              <div className="absolute right-0 top-full z-50 mt-1 w-56 bg-bg-secondary border border-border-default rounded-lg shadow-xl py-1 text-xs">
+                <button onClick={() => { setFileMenuOpen(false); onOpenAudio?.(); }} className="w-full text-left px-3 py-1.5 hover:bg-bg-tertiary"><Keyboard className="w-3.5 h-3.5 inline mr-2" />Open Audio…</button>
+                <button onClick={() => { setFileMenuOpen(false); onImportOto?.(); }} className="w-full text-left px-3 py-1.5 hover:bg-bg-tertiary">Import Base OTO (oto.ini)…</button>
+                <button onClick={() => { setFileMenuOpen(false); onOpenReclistMatch?.(); }} className="w-full text-left px-3 py-1.5 hover:bg-bg-tertiary">Reclist Match Report…</button>
+                <hr className="border-border-subtle my-1" />
+                <button onClick={() => { setFileMenuOpen(false); onLoadProject(); }} className="w-full text-left px-3 py-1.5 hover:bg-bg-tertiary"><FolderOpen className="w-3.5 h-3.5 inline mr-2" />Open Project (.vbp)…</button>
+                <button onClick={() => { setFileMenuOpen(false); onSaveProject(); }} className="w-full text-left px-3 py-1.5 hover:bg-bg-tertiary"><Save className="w-3.5 h-3.5 inline mr-2" />Save Project (.vbp) <kbd className="ml-2">Ctrl+S</kbd></button>
+              </div>
+            )}
+          </div>
+
+          {/* View Menu */}
+          <div className="relative">
+            <button onClick={() => setViewMenuOpen(!viewMenuOpen)} onBlur={() => setTimeout(() => setViewMenuOpen(false), 150)} className="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-bg-tertiary border border-border-subtle hover:border-border-strong transition-colors" title="View Menu">
+              <Eye className="w-4 h-4" />
+            </button>
+            {viewMenuOpen && (
+              <div className="absolute right-0 top-full z-50 mt-1 w-48 bg-bg-secondary border border-border-default rounded-lg shadow-xl py-1 text-xs">
+                <button onClick={() => { setViewMenuOpen(false); onToggleSidebar?.(); }} className="w-full text-left px-3 py-1.5 hover:bg-bg-tertiary flex items-center gap-2">
+                  <span className={`w-4 h-4 rounded ${sidebarOpen ? 'bg-state-success-text' : 'bg-border-default'}`} />
+                  Toggle Sidebar <kbd className="ml-auto">B</kbd>
+                </button>
+                <button onClick={() => { setViewMenuOpen(false); onToggleProperties?.(); }} className="w-full text-left px-3 py-1.5 hover:bg-bg-tertiary flex items-center gap-2">
+                  <span className={`w-4 h-4 rounded ${propertiesOpen ? 'bg-state-success-text' : 'bg-border-default'}`} />
+                  Toggle Properties <kbd className="ml-auto">P</kbd>
+                </button>
+                <hr className="border-border-subtle my-1" />
+                <button onClick={onToggleSpectrogram} className="w-full text-left px-3 py-1.5 hover:bg-bg-tertiary flex items-center gap-2">
+                  <span className={`w-4 h-4 rounded ${enableSpectrogram ? 'bg-state-info-text' : 'bg-border-default'}`} />
+                  Spectrogram Overlay
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Help / Shortcuts */}
+          <button onClick={() => setShortcutsOpen(!shortcutsOpen)} className="p-1.5 text-text-secondary hover:text-text-primary hover:bg-bg-tertiary rounded-lg transition-colors" title="Keyboard Shortcuts (Shift+?)">
+            <HelpCircle className="w-4 h-4" />
+          </button>
+
+          {/* Secondary Actions */}
+          <div className="flex items-center gap-1">
+            <button onClick={onLoadProject} title="Open Workspace (.vbp)" className="p-1.5 text-text-secondary hover:text-text-primary hover:bg-bg-tertiary rounded-lg transition-colors"><FolderOpen className="w-4 h-4" /></button>
+            <button onClick={onSaveProject} title="Save Workspace (.vbp) (Ctrl+S)" className="p-1.5 text-text-secondary hover:text-text-primary hover:bg-bg-tertiary rounded-lg transition-colors"><Save className="w-4 h-4" /></button>
+            <button onClick={onOpenDiagnostics} title="Hardware & Engine Diagnostics" className="p-1.5 text-text-secondary hover:text-text-primary hover:bg-bg-tertiary rounded-lg transition-colors"><Settings2 className="w-4 h-4" /></button>
+          </div>
+
+          <div className="h-5 w-px bg-border-subtle mx-1" />
+
+          {/* Export & Releases */}
+          <button onClick={onOpenExport} className="flex items-center gap-1.5 bg-bg-tertiary hover:bg-bg-hover text-text-primary text-xs font-medium px-3 py-1.5 rounded-lg border border-border-subtle transition-all"><Download className="w-3.5 h-3.5" /><span>Export</span></button>
+          <button onClick={onOpenReleases} className="flex items-center gap-1.5 bg-accent-bg/80 hover:bg-accent-bg text-accent-text text-xs font-semibold px-3 py-1.5 rounded-lg border border-accent-border/60 transition-all shadow-xs" title="Portable Local WebUI & Releases"><Package className="w-3.5 h-3.5" /><span>Local WebUI</span></button>
+        </div>
+      </header>
+
+      {/* Shortcuts Overlay */}
+      {shortcutsOpen && (
+        <div className="fixed inset-0 z-[var(--z-modal)] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4" onClick={() => setShortcutsOpen(false)}>
+          <div className="w-full max-w-md bg-bg-secondary border border-border-default rounded-xl shadow-xl p-6 text-text-primary" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-sm">Keyboard Shortcuts</h3>
+              <button onClick={() => setShortcutsOpen(false)} className="p-1 text-text-secondary hover:text-text-primary rounded-lg hover:bg-bg-tertiary"><Keyboard className="w-5 h-5" /></button>
             </div>
-            <p className="text-[11px] text-slate-400 leading-none">Smart Auto-OTO & DiffSinger Studio</p>
-          </div>
-        </div>
-
-        <div className="h-5 w-[1px] bg-slate-800 mx-1" />
-
-        {/* Mode Toggle Pills */}
-        <div className="bg-slate-950 p-1 rounded-lg border border-slate-800 flex items-center gap-1">
-          <button
-            id="mode-utau-btn"
-            onClick={() => onModeChange('utau')}
-            className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${
-              mode === 'utau'
-                ? 'bg-indigo-600 text-white shadow-sm'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            UTAU Auto-OTO
-          </button>
-          <button
-            id="mode-diffsinger-btn"
-            onClick={() => onModeChange('diffsinger')}
-            className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${
-              mode === 'diffsinger'
-                ? 'bg-indigo-600 text-white shadow-sm'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            DiffSinger Dataset
-          </button>
-        </div>
-
-        {/* Voicebank Profile (in UTAU mode) */}
-        {mode === 'utau' && (
-          <div className="flex items-center gap-1.5 text-xs text-slate-300">
-            <span className="text-slate-500 font-medium">Profile:</span>
-            <select
-              id="voicebank-profile-select"
-              value={profileId}
-              onChange={(e) => onProfileChange(e.target.value as VoicebankProfileId)}
-              className="bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-md px-2 py-1 outline-none focus:border-indigo-500 transition-colors"
-            >
-              {VOICEBANK_PROFILES.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
+            <div className="grid grid-cols-2 gap-2 text-xs max-h-64 overflow-auto">
+              {SHORTCUTS.map(({ key, desc }) => (
+                <div key={key} className="flex items-center gap-2 py-1">
+                  <kbd className="px-2 py-0.5 bg-bg-tertiary border border-border-subtle rounded text-text-secondary font-mono">{key}</kbd>
+                  <span className="text-text-secondary">{desc}</span>
+                </div>
               ))}
-            </select>
+            </div>
+            <p className="text-xs text-text-muted mt-4 text-center">Press <kbd className="px-1.5 py-0.5 bg-bg-tertiary border border-border-subtle rounded">Shift+?</kbd> or <kbd className="px-1.5 py-0.5 bg-bg-tertiary border border-border-subtle rounded">Esc</kbd> to close</p>
           </div>
-        )}
-      </div>
-
-      {/* Middle: Undo/Redo & View Toggles */}
-      <div className="flex items-center gap-2">
-        <div className="flex items-center bg-slate-950 border border-slate-800 rounded-md p-0.5">
-          <button
-            id="undo-btn"
-            onClick={onUndo}
-            disabled={!canUndo}
-            title="Undo (Ctrl+Z)"
-            className="p-1.5 text-slate-400 hover:text-slate-200 disabled:opacity-30 disabled:pointer-events-none rounded hover:bg-slate-800"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-          </button>
-          <button
-            id="redo-btn"
-            onClick={onRedo}
-            disabled={!canRedo}
-            title="Redo (Ctrl+Y)"
-            className="p-1.5 text-slate-400 hover:text-slate-200 disabled:opacity-30 disabled:pointer-events-none rounded hover:bg-slate-800"
-          >
-            <RotateCw className="w-3.5 h-3.5" />
-          </button>
         </div>
-
-        <button
-          id="toggle-spectrogram-btn"
-          onClick={onToggleSpectrogram}
-          className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-md border transition-all ${
-            enableSpectrogram
-              ? 'bg-amber-950/40 text-amber-300 border-amber-700/60'
-              : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-slate-200'
-          }`}
-          title="Toggle FFT Spectrogram Overlay"
-        >
-          <Eye className="w-3.5 h-3.5" />
-          <span>Spectrogram</span>
-        </button>
-
-        {/* Review Queue Pill */}
-        <button
-          id="review-queue-btn"
-          onClick={onOpenReviewQueue}
-          className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-md border transition-all ${
-            reviewCount > 0
-              ? 'bg-amber-500/10 text-amber-400 border-amber-500/30 hover:bg-amber-500/20'
-              : 'bg-slate-950 text-emerald-400 border-slate-800 hover:bg-slate-900'
-          }`}
-        >
-          {reviewCount > 0 ? (
-            <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
-          ) : (
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-          )}
-          <span>Review Queue</span>
-          <span
-            className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
-              reviewCount > 0 ? 'bg-amber-500 text-slate-950' : 'bg-emerald-950 text-emerald-300'
-            }`}
-          >
-            {reviewCount}
-          </span>
-        </button>
-
-        {/* Dataset Health Score */}
-        <button
-          id="dataset-health-btn"
-          onClick={onOpenHealth}
-          className="flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-md bg-slate-950 border border-slate-800 text-slate-300 hover:bg-slate-900 transition-colors"
-        >
-          <Sliders className="w-3.5 h-3.5 text-indigo-400" />
-          <span>Health</span>
-          <span
-            className={`font-semibold ${
-              healthScore >= 90
-                ? 'text-emerald-400'
-                : healthScore >= 70
-                ? 'text-amber-400'
-                : 'text-rose-400'
-            }`}
-          >
-            {healthScore}/100
-          </span>
-        </button>
-      </div>
-
-      {/* Right: Actions (Analyze, Save/Load, Diagnostics, Export) */}
-      <div className="flex items-center gap-2">
-        <button
-          id="batch-analyze-btn"
-          onClick={onBatchAnalyze}
-          disabled={isAnalyzing}
-          className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white text-xs font-semibold px-3 py-1.5 rounded-md transition-all shadow-sm shadow-indigo-600/20 disabled:opacity-50"
-        >
-          <Sparkles className={`w-3.5 h-3.5 ${isAnalyzing ? 'animate-spin' : ''}`} />
-          <span>{isAnalyzing ? 'Analyzing...' : 'Auto-Analyze All'}</span>
-        </button>
-
-        <div className="h-5 w-[1px] bg-slate-800 mx-1" />
-
-        <button
-          id="load-project-btn"
-          onClick={onLoadProject}
-          title="Open Workspace (.vbp)"
-          className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-md transition-colors"
-        >
-          <FolderOpen className="w-4 h-4" />
-        </button>
-
-        <button
-          id="save-project-btn"
-          onClick={onSaveProject}
-          title="Save Workspace (.vbp)"
-          className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-md transition-colors"
-        >
-          <Save className="w-4 h-4" />
-        </button>
-
-        <button
-          id="diagnostics-btn"
-          onClick={onOpenDiagnostics}
-          title="Hardware & Engine Diagnostics"
-          className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-md transition-colors"
-        >
-          <Settings2 className="w-4 h-4" />
-        </button>
-
-        <button
-          id="export-btn"
-          onClick={onOpenExport}
-          className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-100 text-xs font-medium px-3 py-1.5 rounded-md border border-slate-700 transition-all"
-        >
-          <Download className="w-3.5 h-3.5" />
-          <span>Export</span>
-        </button>
-
-        <button
-          id="releases-btn"
-          onClick={onOpenReleases}
-          className="flex items-center gap-1.5 bg-indigo-950/80 hover:bg-indigo-900/80 text-indigo-200 text-xs font-semibold px-3 py-1.5 rounded-md border border-indigo-700/60 transition-all shadow-xs"
-          title="Portable Local WebUI (.bat / .sh) & Releases"
-        >
-          <Package className="w-3.5 h-3.5 text-indigo-400" />
-          <span>Local WebUI</span>
-        </button>
-      </div>
-    </header>
+      )}
+    </>
   );
 };

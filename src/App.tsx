@@ -62,6 +62,12 @@ export default function App() {
   const [isImportOtoOpen, setIsImportOtoOpen] = useState(false);
   const [isReclistMatchOpen, setIsReclistMatchOpen] = useState(false);
 
+  // Panel State
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarWidth, setSidebarWidth] = useState(256);
+  const [propertiesOpen, setPropertiesOpen] = useState(true);
+  const [propertiesWidth, setPropertiesWidth] = useState(320);
+
   // Batch Analysis Progress
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [batchTotal, setBatchTotal] = useState(0);
@@ -606,6 +612,10 @@ export default function App() {
         onOpenReclistMatch={() => setIsReclistMatchOpen(true)}
         enableSpectrogram={settings.enableSpectrogram}
         onToggleSpectrogram={() => setSettings(s => ({ ...s, enableSpectrogram: !s.enableSpectrogram }))}
+        onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+        onToggleProperties={() => setPropertiesOpen(!propertiesOpen)}
+        sidebarOpen={sidebarOpen}
+        propertiesOpen={propertiesOpen}
       />
 
       {/* Friendly import-error banner (Phase 2: never crash on a bad file) */}
@@ -623,18 +633,25 @@ export default function App() {
       )}
 
       {/* Main Workspace Layout (Left: Explorer, Center: Waveform, Right: Inspector) */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden relative">
         {/* Left: Audio Files Explorer */}
-        <SidebarFileList
-          files={files}
-          activeFileId={activeFileId}
-          mode={mode}
-          onSelectFile={setActiveFileId}
-          onAddFiles={handleAddFiles}
-          onLoadDemoVoicebank={loadDemoVoicebank}
-          onLoadDemoSingingPhrase={loadDemoSingingPhrase}
-          onDeleteFile={handleDeleteFile}
-        />
+        {sidebarOpen && (
+          <SidebarFileList
+            files={files}
+            activeFileId={activeFileId}
+            mode={mode}
+            onSelectFile={setActiveFileId}
+            onAddFiles={handleAddFiles}
+            onLoadDemoVoicebank={loadDemoVoicebank}
+            onLoadDemoSingingPhrase={loadDemoSingingPhrase}
+            onDeleteFile={handleDeleteFile}
+            isOpen={sidebarOpen}
+            onToggle={() => setSidebarOpen(false)}
+            width={sidebarWidth}
+            onWidthChange={setSidebarWidth}
+            defaultWidth={256}
+          />
+        )}
 
         {/* Center: Waveform & Label Workspace */}
         <WaveformWorkspace
@@ -649,16 +666,23 @@ export default function App() {
         />
 
         {/* Right: Acoustic & Engine Agreement Inspector */}
-        <PropertiesPanel
-          activeFile={activeFile}
-          mode={mode}
-          selectedPhonemeId={selectedPhonemeId}
-          onUpdateOto={handleUpdateOto}
-          onUpdateAlias={handleUpdateAlias}
-          onUpdatePhonemeText={handleUpdatePhonemeText}
-          onAcceptFileOrRegion={handleAcceptActive}
-          onReanalyzeCurrent={handleReanalyzeActive}
-        />
+        {propertiesOpen && (
+          <PropertiesPanel
+            activeFile={activeFile}
+            mode={mode}
+            selectedPhonemeId={selectedPhonemeId}
+            onUpdateOto={handleUpdateOto}
+            onUpdateAlias={handleUpdateAlias}
+            onUpdatePhonemeText={handleUpdatePhonemeText}
+            onAcceptFileOrRegion={handleAcceptActive}
+            onReanalyzeCurrent={handleReanalyzeActive}
+            isOpen={propertiesOpen}
+            onToggle={() => setPropertiesOpen(false)}
+            width={propertiesWidth}
+            onWidthChange={setPropertiesWidth}
+            defaultWidth={320}
+          />
+        )}
       </div>
 
       {/* Modals & Drawers */}

@@ -1,13 +1,17 @@
-import React from 'react';
-import { 
-  Check, 
-  RefreshCw, 
-  AlertTriangle, 
-  Info, 
+import React, { useRef, useEffect, useState, useCallback } from 'react';
+import {
+  Check,
+  RefreshCw,
+  AlertTriangle,
+  Info,
   SlidersHorizontal,
-  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Layers,
-  Sparkles
+  Sparkles,
+  Filter,
+  MoreVertical,
+  Copy,
 } from 'lucide-react';
 import { AudioFileItem, OtoParameters, DiffSingerPhoneme, WorkstationMode } from '../types/workstation';
 
@@ -20,6 +24,11 @@ interface PropertiesPanelProps {
   onUpdatePhonemeText: (phonemeId: string, text: string) => void;
   onAcceptFileOrRegion: () => void;
   onReanalyzeCurrent: () => void;
+  isOpen: boolean;
+  onToggle: () => void;
+  width: number;
+  onWidthChange: (width: number) => void;
+  defaultWidth: number;
 }
 
 export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
@@ -31,11 +40,41 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   onUpdatePhonemeText,
   onAcceptFileOrRegion,
   onReanalyzeCurrent,
+  isOpen,
+  onToggle,
+  width,
+  onWidthChange,
+  defaultWidth,
 }) => {
+  const [resizing, setResizing] = useState(false);
+  const startWidthRef = useRef(0);
+  const startXRef = useRef(0);
+
+  if (!isOpen) {
+    return (
+      <button
+        onClick={onToggle}
+        className="fixed right-0 top-[var(--header-height)] z-30 w-10 h-12 bg-bg-secondary border-l border-border-subtle flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-bg-tertiary transition-colors"
+        title="Show Properties (P)"
+        aria-label="Show Properties"
+      >
+        <ChevronLeft className="w-5 h-5" />
+      </button>
+    );
+  }
+
   if (!activeFile) {
     return (
-      <aside className="w-80 bg-slate-950 border-l border-slate-800 p-4 text-xs text-slate-500">
-        Select a sample to inspect acoustic properties.
+      <aside className="bg-bg-secondary border-l border-border-subtle flex flex-col select-none text-text-secondary overflow-hidden" style={{ width: `${width}px`, minWidth: '240px', maxWidth: '480px' }}>
+        <div className="flex items-center justify-between p-3 border-b border-border-subtle/80">
+          <span className="text-xs font-semibold text-text-muted uppercase tracking-wider">Acoustic Properties</span>
+          <button onClick={onToggle} className="p-1.5 text-text-secondary hover:text-text-primary hover:bg-bg-tertiary rounded-lg transition-colors" title="Hide Properties (P)">
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="flex-1 flex items-center justify-center p-4 text-xs text-text-muted">
+          Select a sample to inspect acoustic properties.
+        </div>
       </aside>
     );
   }
@@ -45,231 +84,201 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   const isHigh = activeFile.confidence >= 90;
   const isMedium = activeFile.confidence >= 70 && activeFile.confidence < 90;
 
-  const handleOtoChange = (key: keyof OtoParameters, value: number) => {
+  const handleOtoChange = useCallback((key: keyof OtoParameters, value: number) => {
     if (!oto) return;
-    onUpdateOto({
-      ...oto,
-      [key]: value,
-    });
+    onUpdateOto({ ...oto, [key]: value });
+  }, [oto, onUpdateOto]);
+
+  const handleResizeStart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setResizing(true);
+    startWidthRef.current = width;
+    startXRef.current = e.clientX;
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
   };
 
+  useEffect(() => {
+    if (!resizing) return;
+    const move = (e: MouseEvent) => {
+      const delta = startXRef.current - e.clientX; // reversed for right panel
+      const newWidth = Math.max(240, Math.min(480, startWidthRef.current + delta));
+      onWidthChange(newWidth);
+    };
+    const up = () => {
+      setResizing(false);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', up);
+    return () => {
+      window.removeEventListener('mousemove', move);
+      window.removeEventListener('mouseup', up);
+    };
+  }, [resizing, onWidthChange]);
+
   return (
-    <aside className="w-80 bg-slate-950 border-l border-slate-800 flex flex-col h-[calc(100vh-3.5rem)] select-none text-slate-200 overflow-y-auto">
-      {/* Panel Header */}
-      <div className="p-3 border-b border-slate-800/80 flex items-center justify-between">
-        <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-          Acoustic Properties
-        </span>
-        <span
-          className={`text-[11px] font-mono font-bold px-2 py-0.5 rounded border ${
-            isHigh
-              ? 'bg-emerald-950/60 text-emerald-300 border-emerald-800/60'
-              : isMedium
-              ? 'bg-amber-950/60 text-amber-300 border-amber-800/60'
-              : 'bg-rose-950/60 text-rose-300 border-rose-800/60'
-          }`}
-        >
-          {activeFile.confidence}% {isHigh ? 'High' : isMedium ? 'Moderate' : 'Needs Review'}
-        </span>
+    <aside className="bg-bg-secondary border-l border-border-subtle flex flex-col select-none text-text-secondary overflow-hidden" style={{ width: `${width}px`, minWidth: '240px', maxWidth: '480px' }}>
+      {/* Resize Handle */}
+      <div
+        className="w-1 h-full cursor-col-resize hover:bg-border-focus/50 transition-colors flex items-center justify-center"
+        onMouseDown={handleResizeStart}
+        title="Drag to resize"
+        role="separator"
+        aria-label="Resize properties panel"
+      >
+        <div className="w-px h-8 bg-border-subtle hover:bg-border-focus transition-colors" />
       </div>
 
-      {/* Target File / Alias Details */}
-      <div className="p-3 border-b border-slate-800/80 space-y-2.5">
-        <div>
-          <label className="text-[10px] uppercase font-semibold text-slate-500">File Name</label>
-          <div className="font-mono text-xs text-slate-200 mt-0.5 truncate" title={activeFile.name}>{activeFile.name}</div>
-        </div>
-
-        {/* Phase 2 — Audio metadata (read-only facts about the file) */}
-        <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px] font-mono bg-slate-900/60 border border-slate-800/60 rounded p-2">
-          <span className="text-slate-500">Duration</span><span className="text-slate-200 text-right">{(activeFile.durationMs / 1000).toFixed(3)}s</span>
-          <span className="text-slate-500">Sample rate</span><span className="text-slate-200 text-right">{activeFile.sampleRate} Hz</span>
-          <span className="text-slate-500">Channels</span><span className="text-slate-200 text-right">{activeFile.channels === 1 ? '1 (mono)' : `${activeFile.channels} (stereo)`}</span>
-          <span className="text-slate-500">Samples</span><span className="text-slate-200 text-right">{Math.round((activeFile.durationMs / 1000) * activeFile.sampleRate).toLocaleString()}</span>
-          <span className="text-slate-500">Size</span><span className="text-slate-200 text-right">{(activeFile.sizeBytes / 1024).toFixed(1)} KB</span>
-          <span className="text-slate-500">Status</span><span className="text-slate-200 text-right">{activeFile.status}</span>
-        </div>
-
-        {mode === 'utau' ? (
-          <div>
-            <label className="text-[10px] uppercase font-semibold text-slate-500">UTAU Alias</label>
-            <input
-              id="alias-input"
-              type="text"
-              value={activeFile.alias || ''}
-              onChange={(e) => onUpdateAlias(e.target.value)}
-              placeholder="e.g. ka, - ka, a ka"
-              className="w-full mt-1 bg-slate-900 border border-slate-800 rounded px-2 py-1 text-xs font-mono text-slate-200 focus:outline-none focus:border-indigo-500"
-            />
-          </div>
-        ) : (
-          <div>
-            <label className="text-[10px] uppercase font-semibold text-slate-500">Selected Phoneme</label>
-            <input
-              id="phoneme-input"
-              type="text"
-              value={selectedPhoneme?.phoneme || ''}
-              onChange={(e) => selectedPhoneme && onUpdatePhonemeText(selectedPhoneme.id, e.target.value)}
-              className="w-full mt-1 bg-slate-900 border border-slate-800 rounded px-2 py-1 text-xs font-mono text-slate-200 focus:outline-none focus:border-indigo-500"
-            />
-          </div>
-        )}
-      </div>
-
-      {/* Mode-Specific Parameter Controls */}
-      {mode === 'utau' && oto && (
-        <div className="p-3 border-b border-slate-800/80 space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-300 flex items-center gap-1">
-              <SlidersHorizontal className="w-3.5 h-3.5 text-indigo-400" />
-              <span>OTO Parameters</span>
+      {/* Panel Content */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Panel Header */}
+        <div className="p-3 border-b border-border-subtle/80 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-text-muted uppercase tracking-wider">Acoustic Properties</span>
+            <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${
+              isHigh ? 'bg-state-success-bg text-state-success-text border-state-success-border' :
+              isMedium ? 'bg-state-warning-bg text-state-warning-text border-state-warning-border' :
+              'bg-state-error-bg text-state-error-text border-state-error-border'
+            }`}>
+              {activeFile.confidence}% {isHigh ? 'High' : isMedium ? 'Moderate' : 'Needs Review'}
             </span>
-            <span className="text-[10px] text-slate-500">Milliseconds (ms)</span>
           </div>
+          <button onClick={onToggle} className="p-1.5 text-text-secondary hover:text-text-primary hover:bg-bg-tertiary rounded-lg transition-colors" title="Hide Properties (P)">
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+        </div>
 
-          <div className="grid grid-cols-2 gap-2 text-xs">
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-3 space-y-4">
+          {/* File Info */}
+          <div className="space-y-3 border-b border-border-subtle/80 pb-3">
             <div>
-              <label className="text-[10px] text-blue-400 font-medium">Offset</label>
-              <input
-                id="oto-offset-input"
-                type="number"
-                value={oto.offsetMs}
-                onChange={(e) => handleOtoChange('offsetMs', Number(e.target.value))}
-                className="w-full mt-0.5 bg-slate-900 border border-slate-800 rounded px-2 py-1 font-mono text-xs focus:outline-none focus:border-blue-500"
-              />
+              <label className="text-[10px] uppercase font-semibold text-text-muted">File Name</label>
+              <div className="font-mono text-xs text-text-primary mt-0.5 truncate" title={activeFile.name}>{activeFile.name}</div>
             </div>
-            <div>
-              <label className="text-[10px] text-emerald-400 font-medium">Overlap</label>
-              <input
-                id="oto-overlap-input"
-                type="number"
-                value={oto.overlapMs}
-                onChange={(e) => handleOtoChange('overlapMs', Number(e.target.value))}
-                className="w-full mt-0.5 bg-slate-900 border border-slate-800 rounded px-2 py-1 font-mono text-xs focus:outline-none focus:border-emerald-500"
-              />
+
+            {/* Audio metadata */}
+            <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[10px] font-mono bg-bg-tertiary/50 border border-border-subtle/60 rounded-lg p-2">
+              <span className="text-text-muted">Duration</span><span className="text-text-primary text-right">{(activeFile.durationMs / 1000).toFixed(3)}s</span>
+              <span className="text-text-muted">Sample Rate</span><span className="text-text-primary text-right">{activeFile.sampleRate} Hz</span>
+              <span className="text-text-muted">Channels</span><span className="text-text-primary text-right">{activeFile.channels === 1 ? '1 (mono)' : `${activeFile.channels} (stereo)`}</span>
+              <span className="text-text-muted">Samples</span><span className="text-text-primary text-right">{Math.round((activeFile.durationMs / 1000) * activeFile.sampleRate).toLocaleString()}</span>
+              <span className="text-text-muted">Size</span><span className="text-text-primary text-right">{(activeFile.sizeBytes / 1024).toFixed(1)} KB</span>
+              <span className="text-text-muted">Status</span><span className="text-text-primary text-right">{activeFile.status}</span>
             </div>
-            <div>
-              <label className="text-[10px] text-rose-400 font-medium">Preutterance</label>
-              <input
-                id="oto-preut-input"
-                type="number"
-                value={oto.preutteranceMs}
-                onChange={(e) => handleOtoChange('preutteranceMs', Number(e.target.value))}
-                className="w-full mt-0.5 bg-slate-900 border border-slate-800 rounded px-2 py-1 font-mono text-xs focus:outline-none focus:border-rose-500 font-semibold"
-              />
+
+            {mode === 'utau' ? (
+              <div>
+                <label className="text-[10px] uppercase font-semibold text-text-muted">UTAU Alias</label>
+                <input id="alias-input" type="text" value={activeFile.alias || ''} onChange={(e) => onUpdateAlias(e.target.value)} placeholder="e.g. ka, - ka, a ka" className="w-full mt-1 bg-bg-tertiary border border-border-subtle rounded-lg px-2 py-1 text-xs font-mono text-text-primary focus:outline-none focus:border-border-focus transition-colors" />
+              </div>
+            ) : (
+              <div>
+                <label className="text-[10px] uppercase font-semibold text-text-muted">Selected Phoneme</label>
+                <input id="phoneme-input" type="text" value={selectedPhoneme?.phoneme || ''} onChange={(e) => selectedPhoneme && onUpdatePhonemeText(selectedPhoneme.id, e.target.value)} className="w-full mt-1 bg-bg-tertiary border border-border-subtle rounded-lg px-2 py-1 text-xs font-mono text-text-primary focus:outline-none focus:border-border-focus transition-colors" />
+              </div>
+            )}
+          </div>
+
+          {/* OTO Parameters */}
+          {mode === 'utau' && oto && (
+            <div className="space-y-3 border-b border-border-subtle/80 pb-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-text-secondary flex items-center gap-1">
+                  <SlidersHorizontal className="w-3.5 h-3.5 text-mode-utau" />
+                  <span>OTO Parameters</span>
+                </span>
+                <span className="text-[10px] text-text-muted">Milliseconds (ms)</span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <label className="text-[10px] text-blue-400 font-medium">Offset</label>
+                  <input id="oto-offset-input" type="number" value={oto.offsetMs} onChange={(e) => handleOtoChange('offsetMs', Number(e.target.value))} className="w-full mt-0.5 bg-bg-tertiary border border-border-subtle rounded-lg px-2 py-1 font-mono text-xs focus:outline-none focus:border-blue-500 transition-colors" />
+                </div>
+                <div>
+                  <label className="text-[10px] text-emerald-400 font-medium">Overlap</label>
+                  <input id="oto-overlap-input" type="number" value={oto.overlapMs} onChange={(e) => handleOtoChange('overlapMs', Number(e.target.value))} className="w-full mt-0.5 bg-bg-tertiary border border-border-subtle rounded-lg px-2 py-1 font-mono text-xs focus:outline-none focus:border-emerald-500 transition-colors" />
+                </div>
+                <div>
+                  <label className="text-[10px] text-rose-400 font-medium">Preutterance</label>
+                  <input id="oto-preut-input" type="number" value={oto.preutteranceMs} onChange={(e) => handleOtoChange('preutteranceMs', Number(e.target.value))} className="w-full mt-0.5 bg-bg-tertiary border border-border-subtle rounded-lg px-2 py-1 font-mono text-xs focus:outline-none focus:border-rose-500 font-semibold transition-colors" />
+                </div>
+                <div>
+                  <label className="text-[10px] text-pink-400 font-medium">Fixed (Consonant)</label>
+                  <input id="oto-fixed-input" type="number" value={oto.fixedMs} onChange={(e) => handleOtoChange('fixedMs', Number(e.target.value))} className="w-full mt-0.5 bg-bg-tertiary border border-border-subtle rounded-lg px-2 py-1 font-mono text-xs focus:outline-none focus:border-pink-500 transition-colors" />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[10px] text-indigo-400 font-medium">Cutoff (Negative from end)</label>
+                <input id="oto-cutoff-input" type="number" value={oto.cutoffMs} onChange={(e) => handleOtoChange('cutoffMs', Number(e.target.value))} className="w-full mt-0.5 bg-bg-tertiary border border-border-subtle rounded-lg px-2 py-1 font-mono text-xs focus:outline-none focus:border-indigo-500 transition-colors" />
+              </div>
             </div>
-            <div>
-              <label className="text-[10px] text-pink-400 font-medium">Fixed (Consonant)</label>
-              <input
-                id="oto-fixed-input"
-                type="number"
-                value={oto.fixedMs}
-                onChange={(e) => handleOtoChange('fixedMs', Number(e.target.value))}
-                className="w-full mt-0.5 bg-slate-900 border border-slate-800 rounded px-2 py-1 font-mono text-xs focus:outline-none focus:border-pink-500"
-              />
+          )}
+
+          {/* DiffSinger Phoneme Details */}
+          {mode === 'diffsinger' && selectedPhoneme && (
+            <div className="space-y-2 text-xs border-b border-border-subtle/80 pb-3">
+              <div className="flex items-center justify-between text-text-muted"><span>Duration:</span><span className="font-mono text-text-primary">{selectedPhoneme.endMs - selectedPhoneme.startMs}ms</span></div>
+              <div className="flex items-center justify-between text-text-muted"><span>Range:</span><span className="font-mono text-text-primary">{selectedPhoneme.startMs}ms - {selectedPhoneme.endMs}ms</span></div>
+              <div className="flex items-center justify-between text-text-muted"><span>Pitch Note (F0):</span><span className="font-mono text-mode-utau">{selectedPhoneme.pitchNote || 'Unvoiced'}</span></div>
+            </div>
+          )}
+
+          {/* Multi-Engine Evidence Matrix */}
+          <div className="space-y-2 border-b border-border-subtle/80 pb-3">
+            <span className="text-xs font-semibold text-text-secondary flex items-center gap-1">
+              <Layers className="w-3.5 h-3.5 text-mode-utau" />
+              <span>Multi-Engine Evidence Matrix</span>
+            </span>
+            <div className="space-y-1.5 text-[10px] font-mono">
+              {[
+                { name: 'SOFA Singing Aligner', score: 94 },
+                { name: 'MFA Triphone Model', score: 92 },
+                { name: 'Whisper Phonetic ASR', score: 91 },
+                { name: 'Acoustic DSP Envelope', score: 89 },
+              ].map((engine, i) => (
+                <div key={i} className="flex items-center justify-between bg-bg-tertiary/50 px-2 py-1 rounded-lg border border-border-subtle/60">
+                  <span className="text-text-muted">{engine.name}</span>
+                  <span className={`text-state-success-text flex items-center gap-1 ${engine.score >= 90 ? 'font-semibold' : ''}`}>
+                    <Check className="w-3 h-3" /> {engine.score}%
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
 
-          <div>
-            <label className="text-[10px] text-indigo-400 font-medium">Cutoff (Negative from end)</label>
-            <input
-              id="oto-cutoff-input"
-              type="number"
-              value={oto.cutoffMs}
-              onChange={(e) => handleOtoChange('cutoffMs', Number(e.target.value))}
-              className="w-full mt-0.5 bg-slate-900 border border-slate-800 rounded px-2 py-1 font-mono text-xs focus:outline-none focus:border-indigo-500"
-            />
+          {/* Verification Diagnostic */}
+          <div className="space-y-1.5 border-b border-border-subtle/80 pb-3">
+            <div className="text-[10px] font-semibold text-text-muted flex items-center gap-1">
+              <Info className="w-3.5 h-3.5 text-mode-utau" />
+              <span>Verification Diagnostic</span>
+            </div>
+            <p className="text-[10px] text-text-secondary leading-relaxed bg-bg-tertiary/50 p-2 rounded-lg border border-border-subtle/60">
+              {activeFile.confidence >= 90
+                ? 'All 4 analysis engines converge within a 12ms tolerance window. Harmonic formants and plosive closure confirm steady onset.'
+                : activeFile.confidence >= 70
+                ? 'Minor boundary dispersion (~24ms) between ASR and acoustic DSP. Plausible for natural vibrato release.'
+                : 'Significant conflict detected: boundary spread exceeds 45ms. Review onset boundary manually before exporting.'}
+            </p>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="mt-auto space-y-2 pt-2 border-t border-border-subtle/80">
+            <button id="accept-region-btn" onClick={onAcceptFileOrRegion} className="w-full flex items-center justify-center gap-1.5 bg-state-success-text/10 hover:bg-state-success-text/20 text-state-success-text font-semibold text-xs py-2 rounded-lg border border-state-success-border/30 transition-all">
+              <Check className="w-3.5 h-3.5" />
+              <span>Accept as Verified (A)</span>
+            </button>
+            <button id="reanalyze-single-btn" onClick={onReanalyzeCurrent} className="w-full flex items-center justify-center gap-1.5 bg-bg-tertiary hover:bg-bg-hover text-text-secondary text-xs py-1.5 rounded-lg border border-border-subtle transition-colors">
+              <RefreshCw className="w-3.5 h-3.5 text-text-muted" />
+              <span>Re-Analyze Sample</span>
+            </button>
           </div>
         </div>
-      )}
-
-      {/* DiffSinger Phoneme Region Details */}
-      {mode === 'diffsinger' && selectedPhoneme && (
-        <div className="p-3 border-b border-slate-800/80 space-y-2 text-xs">
-          <div className="flex items-center justify-between text-slate-400">
-            <span>Duration:</span>
-            <span className="font-mono text-slate-200">{selectedPhoneme.endMs - selectedPhoneme.startMs}ms</span>
-          </div>
-          <div className="flex items-center justify-between text-slate-400">
-            <span>Range:</span>
-            <span className="font-mono text-slate-200">{selectedPhoneme.startMs}ms - {selectedPhoneme.endMs}ms</span>
-          </div>
-          <div className="flex items-center justify-between text-slate-400">
-            <span>Pitch Note (F0):</span>
-            <span className="font-mono text-indigo-300">{selectedPhoneme.pitchNote || 'Unvoiced'}</span>
-          </div>
-        </div>
-      )}
-
-      {/* Multi-Engine Agreement Matrix */}
-      <div className="p-3 border-b border-slate-800/80 space-y-2">
-        <span className="text-xs font-semibold text-slate-300 flex items-center gap-1">
-          <Layers className="w-3.5 h-3.5 text-indigo-400" />
-          <span>Multi-Engine Evidence Matrix</span>
-        </span>
-
-        <div className="space-y-1.5 text-[11px] font-mono">
-          <div className="flex items-center justify-between bg-slate-900 px-2 py-1 rounded border border-slate-800/60">
-            <span className="text-slate-400">SOFA Singing Aligner</span>
-            <span className="text-emerald-400 flex items-center gap-1">
-              <Check className="w-3 h-3" /> 94%
-            </span>
-          </div>
-          <div className="flex items-center justify-between bg-slate-900 px-2 py-1 rounded border border-slate-800/60">
-            <span className="text-slate-400">MFA Triphone Model</span>
-            <span className="text-emerald-400 flex items-center gap-1">
-              <Check className="w-3 h-3" /> 92%
-            </span>
-          </div>
-          <div className="flex items-center justify-between bg-slate-900 px-2 py-1 rounded border border-slate-800/60">
-            <span className="text-slate-400">Whisper Phonetic ASR</span>
-            <span className="text-emerald-400 flex items-center gap-1">
-              <Check className="w-3 h-3" /> 91%
-            </span>
-          </div>
-          <div className="flex items-center justify-between bg-slate-900 px-2 py-1 rounded border border-slate-800/60">
-            <span className="text-slate-400">Acoustic DSP Envelope</span>
-            <span className="text-emerald-400 flex items-center gap-1">
-              <Check className="w-3 h-3" /> 89%
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Conflict Explanation Accordion */}
-      <div className="p-3 border-b border-slate-800/80 space-y-1.5">
-        <div className="text-[11px] font-semibold text-slate-400 flex items-center gap-1">
-          <Info className="w-3.5 h-3.5 text-indigo-400" />
-          <span>Verification Diagnostic</span>
-        </div>
-        <p className="text-[11px] text-slate-400 leading-relaxed bg-slate-900/60 p-2 rounded border border-slate-800/60">
-          {activeFile.confidence >= 90
-            ? 'All 4 analysis engines converge within a 12ms tolerance window. Harmonic formants and plosive closure confirm steady onset.'
-            : activeFile.confidence >= 70
-            ? 'Minor boundary dispersion (~24ms) between ASR and acoustic DSP. Plausible for natural vibrato release.'
-            : 'Significant conflict detected: boundary spread exceeds 45ms. Review onset boundary manually before exporting.'}
-        </p>
-      </div>
-
-      {/* Action Buttons */}
-      <div className="p-3 mt-auto space-y-2">
-        <button
-          id="accept-region-btn"
-          onClick={onAcceptFileOrRegion}
-          className="w-full flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-semibold text-xs py-2 rounded-md shadow-sm transition-all"
-        >
-          <Check className="w-3.5 h-3.5" />
-          <span>Accept as Verified (A)</span>
-        </button>
-
-        <button
-          id="reanalyze-single-btn"
-          onClick={onReanalyzeCurrent}
-          className="w-full flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs py-1.5 rounded-md border border-slate-700 transition-colors"
-        >
-          <RefreshCw className="w-3.5 h-3.5 text-slate-400" />
-          <span>Re-Analyze Sample</span>
-        </button>
       </div>
     </aside>
   );
