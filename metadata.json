@@ -1,6 +1,6 @@
 {
   "name": "Unified Vocal Labeling Workstation",
-  "description": "Local-first intelligent vocal and audio labeling workstation for UTAU Auto-OTO and DiffSinger dataset creation with multi-engine verification.",
+  "description": "Intelligent vocal and audio labeling workstation built on top of vLabeler (sdercolin/vlabeler) for UTAU Auto-OTO and DiffSinger dataset creation with multi-engine verification.",
   "requestFramePermissions": ["microphone"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

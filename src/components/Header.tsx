@@ -74,12 +74,18 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-bold text-sm tracking-tight text-white">VLabeler Next</span>
-              <span className="text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded bg-indigo-950 text-indigo-300 border border-indigo-800/60">
-                Workstation
-              </span>
+              <span className="font-bold text-sm tracking-tight text-white">Labello / VLabeler Next</span>
+              <a
+                href="https://github.com/sdercolin/vlabeler"
+                target="_blank"
+                rel="noreferrer"
+                title="Built upon and fully compatible with sdercolin/vlabeler"
+                className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-indigo-950/80 hover:bg-indigo-900 text-indigo-300 border border-indigo-800/60 transition-colors"
+              >
+                vLabeler Core
+              </a>
             </div>
-            <p className="text-[11px] text-slate-400 leading-none">Auto-OTO & DiffSinger Studio</p>
+            <p className="text-[11px] text-slate-400 leading-none">Smart Auto-OTO & DiffSinger Studio</p>
           </div>
         </div>
 

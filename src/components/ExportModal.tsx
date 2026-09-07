@@ -3,6 +3,11 @@ import { X, Download, Copy, Check, FileCode, Sliders } from 'lucide-react';
 import { AudioFileItem, WorkstationMode, LineEnding, TextEncoding } from '../types/workstation';
 import { generateOtoIniContent, createOtoIniBlob } from '../services/oto/otoExporter';
 import { exportDiffSingerJson, exportLabText, exportTextGrid } from '../services/diffsinger/diffsingerExporter';
+import { 
+  generateVLabelerOtoProfile, 
+  generateVLabelerDiffSingerProfile, 
+  exportVLabelerProjectDescriptor 
+} from '../services/vlabeler/vlabelerCompat';
 
 interface ExportModalProps {
   isOpen: boolean;
@@ -22,7 +27,8 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   const [lineEnding, setLineEnding] = useState<LineEnding>('CRLF');
   const [encoding, setEncoding] = useState<TextEncoding>('Shift-JIS');
   const [includeComments, setIncludeComments] = useState<boolean>(true);
-  const [diffSingerFormat, setDiffSingerFormat] = useState<'ds_json' | 'lab' | 'textgrid'>('ds_json');
+  const [utauFormat, setUtauFormat] = useState<'oto_ini' | 'vlabeler_labeler' | 'vlabeler_project'>('oto_ini');
+  const [diffSingerFormat, setDiffSingerFormat] = useState<'ds_json' | 'lab' | 'textgrid' | 'vlabeler_labeler' | 'vlabeler_project'>('ds_json');
   const [copied, setCopied] = useState<boolean>(false);
 
   if (!isOpen) return null;
@@ -32,8 +38,16 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   let downloadFileName = '';
 
   if (mode === 'utau') {
-    outputText = generateOtoIniContent(files, { lineEnding, encoding, includeComments });
-    downloadFileName = 'oto.ini';
+    if (utauFormat === 'oto_ini') {
+      outputText = generateOtoIniContent(files, { lineEnding, encoding, includeComments });
+      downloadFileName = 'oto.ini';
+    } else if (utauFormat === 'vlabeler_labeler') {
+      outputText = generateVLabelerOtoProfile();
+      downloadFileName = 'oto.labeler.json';
+    } else {
+      outputText = exportVLabelerProjectDescriptor(files, 'utau');
+      downloadFileName = 'vlabeler_project.json';
+    }
   } else {
     if (diffSingerFormat === 'ds_json') {
       outputText = exportDiffSingerJson(files);
@@ -42,10 +56,16 @@ export const ExportModal: React.FC<ExportModalProps> = ({
       const target = activeFile || files[0];
       outputText = target ? exportLabText(target, lineEnding) : '';
       downloadFileName = target ? `${target.name.replace(/\.[^/.]+$/, "")}.lab` : 'sample.lab';
-    } else {
+    } else if (diffSingerFormat === 'textgrid') {
       const target = activeFile || files[0];
       outputText = target ? exportTextGrid(target) : '';
       downloadFileName = target ? `${target.name.replace(/\.[^/.]+$/, "")}.TextGrid` : 'sample.TextGrid';
+    } else if (diffSingerFormat === 'vlabeler_labeler') {
+      outputText = generateVLabelerDiffSingerProfile();
+      downloadFileName = 'diffsinger.labeler.json';
+    } else {
+      outputText = exportVLabelerProjectDescriptor(files, 'diffsinger');
+      downloadFileName = 'vlabeler_project.json';
     }
   }
 
@@ -102,41 +122,59 @@ export const ExportModal: React.FC<ExportModalProps> = ({
           {mode === 'utau' ? (
             <>
               <div className="flex items-center gap-2">
-                <span className="text-slate-400 font-medium">Encoding:</span>
+                <span className="text-slate-400 font-medium">Format:</span>
                 <select
-                  id="encoding-select"
-                  value={encoding}
-                  onChange={(e) => setEncoding(e.target.value as TextEncoding)}
+                  id="utau-format-select"
+                  value={utauFormat}
+                  onChange={(e) => setUtauFormat(e.target.value as any)}
                   className="bg-slate-900 border border-slate-800 text-slate-200 rounded px-2 py-1 outline-none focus:border-indigo-500"
                 >
-                  <option value="Shift-JIS">Shift-JIS (Windows UTAU Native)</option>
-                  <option value="UTF-8-BOM">UTF-8 with BOM (OpenUtau / Windows)</option>
-                  <option value="UTF-8">UTF-8 Standard</option>
+                  <option value="oto_ini">Standard UTAU oto.ini</option>
+                  <option value="vlabeler_labeler">vLabeler Profile (oto.labeler.json)</option>
+                  <option value="vlabeler_project">vLabeler Project Descriptor (.json)</option>
                 </select>
               </div>
 
-              <div className="flex items-center gap-2">
-                <span className="text-slate-400 font-medium">Line Endings:</span>
-                <select
-                  id="line-ending-select"
-                  value={lineEnding}
-                  onChange={(e) => setLineEnding(e.target.value as LineEnding)}
-                  className="bg-slate-900 border border-slate-800 text-slate-200 rounded px-2 py-1 outline-none focus:border-indigo-500"
-                >
-                  <option value="CRLF">CRLF (\r\n - Windows Standard)</option>
-                  <option value="LF">LF (\n - Unix)</option>
-                </select>
-              </div>
+              {utauFormat === 'oto_ini' && (
+                <>
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-400 font-medium">Encoding:</span>
+                    <select
+                      id="encoding-select"
+                      value={encoding}
+                      onChange={(e) => setEncoding(e.target.value as TextEncoding)}
+                      className="bg-slate-900 border border-slate-800 text-slate-200 rounded px-2 py-1 outline-none focus:border-indigo-500"
+                    >
+                      <option value="Shift-JIS">Shift-JIS (Windows UTAU Native)</option>
+                      <option value="UTF-8-BOM">UTF-8 with BOM (OpenUtau / Windows)</option>
+                      <option value="UTF-8">UTF-8 Standard</option>
+                    </select>
+                  </div>
 
-              <label className="flex items-center gap-1.5 text-slate-300 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={includeComments}
-                  onChange={(e) => setIncludeComments(e.target.checked)}
-                  className="rounded border-slate-800 text-indigo-600 focus:ring-0"
-                />
-                <span>Include header comments</span>
-              </label>
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-400 font-medium">Line Endings:</span>
+                    <select
+                      id="line-ending-select"
+                      value={lineEnding}
+                      onChange={(e) => setLineEnding(e.target.value as LineEnding)}
+                      className="bg-slate-900 border border-slate-800 text-slate-200 rounded px-2 py-1 outline-none focus:border-indigo-500"
+                    >
+                      <option value="CRLF">CRLF (\r\n - Windows Standard)</option>
+                      <option value="LF">LF (\n - Unix)</option>
+                    </select>
+                  </div>
+
+                  <label className="flex items-center gap-1.5 text-slate-300 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={includeComments}
+                      onChange={(e) => setIncludeComments(e.target.checked)}
+                      className="rounded border-slate-800 text-indigo-600 focus:ring-0"
+                    />
+                    <span>Include header comments</span>
+                  </label>
+                </>
+              )}
             </>
           ) : (
             <div className="flex items-center gap-2">
@@ -150,6 +188,8 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                 <option value="ds_json">DiffSinger Dataset (.ds JSON)</option>
                 <option value="lab">HTS / Phoneme Duration (.lab)</option>
                 <option value="textgrid">Praat Interval Tier (.TextGrid)</option>
+                <option value="vlabeler_labeler">vLabeler Profile (diffsinger.labeler.json)</option>
+                <option value="vlabeler_project">vLabeler Project Descriptor (.json)</option>
               </select>
             </div>
           )}

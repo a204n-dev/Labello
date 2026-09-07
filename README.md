@@ -1,10 +1,32 @@
-# Unified Vocal Labeling Workstation
+# Labello / Unified Vocal Labeling Workstation
 
-> An intelligent, local-first vocal and audio labeling workstation built upon the proven foundations of **VLabeler**, designed for high-accuracy **UTAU Auto-OTO** generation and **DiffSinger dataset** alignment.
+> An intelligent, local-first vocal and audio labeling workstation built on top of [**vLabeler**](https://github.com/sdercolin/vlabeler) by [@sdercolin](https://github.com/sdercolin), designed for high-accuracy **UTAU Auto-OTO** generation, **DiffSinger dataset** alignment, and multi-engine verification.
 
+![Upstream vLabeler](https://img.shields.io/badge/Based%20on-vLabeler%20(sdercolin)-7c3aed?logo=github)
 ![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-blue)
 ![Processing](https://img.shields.io/badge/Processing-Local--First%20%7C%20Offline-emerald)
 ![License](https://img.shields.io/badge/License-Apache--2.0-indigo)
+
+---
+
+## Relationship to Upstream vLabeler (`sdercolin/vlabeler`)
+
+This project is built upon the architectural foundations and interaction paradigms established by [**vLabeler**](https://github.com/sdercolin/vlabeler):
+
+- **Labeler Profiles (`.labeler.json`)**: Bidirectional export and import compatibility with vLabeler's modular labeler profiles for both UTAU (`oto.labeler.json`) and DiffSinger / NNSVS (`diffsinger.labeler.json`).
+- **Subproject & Multi-Entry Architecture**: Supports voicebank sample directories, singer root configurations, and multi-entry phonetic segmentation.
+- **VLabeler Ergonomic Keybindings**:
+  - `1`, `2`, `3`, `4`, `5`: Position parameter lines (Offset, Overlap, Preutterance, Fixed, Cutoff).
+  - `Enter` / `Shift+Enter`: Navigate to next / previous sample or entry.
+  - `Space`: Playback / pause selected audio segment.
+  - `Tab`: Jump to next unreviewed or low-confidence boundary.
+  - `S`: Toggle star / bookmark on entries.
+- **Extensions Introduced in Labello**:
+  - **Automated Smart Auto-OTO Engine**: Zero-crossing, acoustic energy, and formant-driven boundary generation.
+  - **Multi-Engine Consensus Alignment**: Cross-verification across SOFA, MFA, Whisper ASR, and client DSP with automated conflict detection.
+  - **Human-in-the-Loop Review Queue**: Directly isolates uncertain segments (<70% confidence).
+  - **Integrated Health Auditor**: 0–100 dataset score detecting digital clipping, impossible negative timings, and overlap collisions.
+  - **Automated Windows `.exe` CI/CD**: Packaged releases with NSIS installer and portable executables.
 
 ---
 
