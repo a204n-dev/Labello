@@ -1,6 +1,9 @@
 {
   "appId": "com.labello.vocal.workstation",
   "productName": "Labello",
+  "npmRebuild": false,
+  "nodeGypRebuild": false,
+  "publish": null,
   "directories": {
     "output": "release"
   },
@@ -23,7 +26,9 @@
         "arch": ["x64"]
       }
     ],
-    "requestedExecutionLevel": "asInvoker"
+    "requestedExecutionLevel": "asInvoker",
+    "sign": null,
+    "forceCodeSigning": false
   },
   "nsis": {
     "oneClick": false,

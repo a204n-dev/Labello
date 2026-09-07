@@ -20,8 +20,6 @@ jobs:
     runs-on: windows-latest
     permissions:
       contents: write
-    env:
-      NPM_CONFIG_OPTIONAL: 'false'
 
     steps:
       - name: Checkout Repository
@@ -29,41 +27,38 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Setup Node.js 24 LTS
+      - name: Setup Node.js 22 LTS
         uses: actions/setup-node@v4
         with:
-          node-version: 24
-          cache: 'npm'
+          node-version: 22
 
-      - name: Install Project Dependencies (no optional deps)
-        run: npm ci --no-optional --prefer-offline
+      - name: Install Dependencies
+        run: npm install
 
       - name: Build Web Application
         run: npm run build
 
       - name: Package Windows Installer & Portable Executable
-        run: npx electron-builder --win nsis portable --config electron-builder.json -p never
+        run: npx electron-builder --win --x64 -p never --config electron-builder.json
         env:
           ELECTRON_BUILDER_ALLOW_UNRESOLVED_DEPENDENCIES: true
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+          DEBUG: electron-builder
 
       - name: Generate SHA-256 Checksums & Release Notes
         shell: pwsh
         run: |
-          $releaseDir = "release"
-          if (-not (Test-Path $releaseDir)) {
-            Write-Warning "Release directory not found at $releaseDir"
-            exit 1
+          New-Item -ItemType Directory -Force -Path release
+          $exeFiles = Get-ChildItem -Path release -Filter *.exe
+          if ($exeFiles.Count -gt 0) {
+            $exeFiles | ForEach-Object {
+              $hash = (Get-FileHash -Path $_.FullName -Algorithm SHA256).Hash.ToLower()
+              "$hash  $($_.Name)" | Out-File -FilePath release/checksums-sha256.txt -Append -Encoding ascii
+            }
+            Get-Content release/checksums-sha256.txt
+          } else {
+            Write-Warning "No .exe files found in release directory."
           }
-          $exes = Get-ChildItem -Path $releaseDir -Filter "*.exe" -ErrorAction SilentlyContinue
-          if (-not $exes) {
-            Write-Error "No .exe files found in $releaseDir"
-            exit 1
-          }
-          $exes | ForEach-Object {
-            $hash = (Get-FileHash -Path $_.FullName -Algorithm SHA256).Hash.ToLower()
-            "$hash  $($_.Name)" | Out-File -FilePath "$releaseDir/checksums-sha256.txt" -Append -Encoding ascii
-          }
-          Get-Content "$releaseDir/checksums-sha256.txt"
 
           $tag = if ("${{ github.event_name }}" -eq "workflow_dispatch") { "${{ inputs.version }}" } else { "${{ github.ref_name }}" }
           if (-not $tag) { $tag = "v1.0.0" }
@@ -77,21 +72,23 @@ jobs:
           - **Portable (.exe)**: Standalone executable, runs immediately with zero installation.
 
           ### Verification:
-          Refer to \`checksums-sha256.txt\` attached to this release.
+          Refer to `checksums-sha256.txt` attached to this release.
 
           ### Requirements:
           - Windows 10 / Windows 11 (64-bit)
           - 4 GB+ RAM
           "@
-          $notes | Out-File -FilePath "$releaseDir/release-notes.md" -Encoding utf8
+          $notes | Out-File -FilePath release/release-notes.md -Encoding utf8
 
       - name: Upload Windows Executables as Action Artifacts
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: windows-executables
           path: |
             release/*.exe
             release/checksums-sha256.txt
+          if-no-files-found: warn
           retention-days: 30
 
       - name: Publish to GitHub Releases
@@ -104,6 +101,18 @@ jobs:
 
           Write-Host "Publishing release for tag: $tag"
 
+          $exeFiles = Get-ChildItem -Path release -Filter *.exe
+          if ($exeFiles.Count -eq 0) {
+            Write-Error "No executables found in release directory to publish."
+            exit 1
+          }
+
+          $fileArgs = @()
+          $exeFiles | ForEach-Object { $fileArgs += $_.FullName }
+          if (Test-Path release/checksums-sha256.txt) {
+            $fileArgs += (Resolve-Path release/checksums-sha256.txt).Path
+          }
+
           $releaseExists = $false
           try {
             gh release view $tag
@@ -112,10 +121,17 @@ jobs:
             $releaseExists = $false
           }
 
-          if ($releaseExists) {
-            Write-Host "Release $tag exists. Uploading assets..."
-            gh release upload $tag release/*.exe release/checksums-sha256.txt --clobber
-          } else {
-            Write-Host "Creating new release $tag..."
-            gh release create $tag release/*.exe release/checksums-sha256.txt --title "Labello $tag" --notes-file release/release-notes.md
+          try {
+            if ($releaseExists) {
+              Write-Host "Release $tag exists. Uploading assets..."
+              gh release upload $tag @fileArgs --clobber
+            } else {
+              Write-Host "Creating new release $tag..."
+              gh release create $tag @fileArgs --title "Labello $tag" --notes-file release/release-notes.md
+            }
+            Write-Host "Release successfully published to GitHub Releases!"
+          } catch {
+            Write-Warning "Could not publish directly to GitHub Releases: $_"
+            Write-Warning "Ensure repository settings have: Settings -> Actions -> General -> Workflow permissions set to 'Read and write permissions'."
+            Write-Warning "The executables have been safely preserved in the Action Artifacts section."
           }
