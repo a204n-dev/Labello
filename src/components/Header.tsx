@@ -11,7 +11,8 @@ import {
   Save,
   RotateCcw,
   RotateCw,
-  Eye
+  Eye,
+  Package
 } from 'lucide-react';
 import { WorkstationMode, VoicebankProfileId } from '../types/workstation';
 import { VOICEBANK_PROFILES } from '../services/oto/otoProfiles';
@@ -33,6 +34,7 @@ interface HeaderProps {
   onOpenHealth: () => void;
   onOpenDiagnostics: () => void;
   onOpenExport: () => void;
+  onOpenReleases: () => void;
   onSaveProject: () => void;
   onLoadProject: () => void;
   enableSpectrogram: boolean;
@@ -56,6 +58,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenHealth,
   onOpenDiagnostics,
   onOpenExport,
+  onOpenReleases,
   onSaveProject,
   onLoadProject,
   enableSpectrogram,
@@ -260,6 +263,16 @@ export const Header: React.FC<HeaderProps> = ({
         >
           <Download className="w-3.5 h-3.5" />
           <span>Export</span>
+        </button>
+
+        <button
+          id="releases-btn"
+          onClick={onOpenReleases}
+          className="flex items-center gap-1.5 bg-indigo-950/80 hover:bg-indigo-900/80 text-indigo-200 text-xs font-semibold px-3 py-1.5 rounded-md border border-indigo-700/60 transition-all shadow-xs"
+          title="Windows .exe Installer & Releases"
+        >
+          <Package className="w-3.5 h-3.5 text-indigo-400" />
+          <span>Windows .exe</span>
         </button>
       </div>
     </header>

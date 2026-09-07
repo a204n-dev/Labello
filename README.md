@@ -36,25 +36,47 @@ The **Unified Vocal Labeling Workstation** bridges the gap between traditional c
 
 ---
 
-## Getting Started
+## Windows Executable Installation (.exe Releases)
 
-### Prerequisites
+Official pre-compiled 64-bit Windows executables are published to the **[Releases](../../releases)** page:
 
-- **Node.js**: v18.0.0 or higher
-- **npm** or **bun** / **yarn**
+1. **Windows Installer (`VLabeler-Next-Setup-x64.exe`)**:
+   - Recommended for standard Windows 10 / 11 desktop usage.
+   - Installs to `%LOCALAPPDATA%\Programs`, registers desktop shortcuts, Start Menu entry, and adds an uninstaller in Windows Settings / Control Panel.
+2. **Portable Edition (`VLabeler-Next-Portable-x64.exe`)**:
+   - Zero-installation standalone `.exe`.
+   - Run immediately from any folder or USB flash drive without requiring administrative permissions.
 
-### Installation
+> **Windows Defender SmartScreen Notice**:
+> For community self-signed releases, Windows may display *"Windows protected your PC"*. Click **More info** &rarr; **Run anyway** to proceed.
+
+---
+
+### Automated GitHub Actions Release Pipeline
+
+Every tag push or manual workflow dispatch automatically builds, signs, generates SHA256 checksums, and uploads Windows installers:
 
 ```bash
-# Clone the repository
-git clone https://github.com/your-username/vocal-labeling-workstation.git
-cd vocal-labeling-workstation
-
-# Install dependencies
-npm install
+# Create and push a version tag to trigger an automated .exe release build
+git tag -a v1.0.0 -m "Release v1.0.0"
+git push origin v1.0.0
 ```
 
-### Running the Development Server
+You can also trigger builds manually via **GitHub &rarr; Actions &rarr; Build and Release Windows Executables &rarr; Run workflow**.
+
+### Building the Windows .exe Locally
+
+To compile the Windows desktop installer on your local machine:
+
+```bash
+npm install
+npm run dist:win
+```
+The output `.exe` installers are generated in the `./release/` directory.
+
+---
+
+## Getting Started (Web / Local Development)
 
 ```bash
 npm run dev

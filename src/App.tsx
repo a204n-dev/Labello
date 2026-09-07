@@ -14,6 +14,7 @@ import { DatasetHealthModal } from './components/DatasetHealthModal';
 import { ModelDiagnosticsModal } from './components/ModelDiagnosticsModal';
 import { ExportModal } from './components/ExportModal';
 import { BatchProgressModal } from './components/BatchProgressModal';
+import { ReleasesModal } from './components/ReleasesModal';
 
 import { 
   AudioFileItem, 
@@ -55,6 +56,7 @@ export default function App() {
   const [isDiagnosticsOpen, setIsDiagnosticsOpen] = useState(false);
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isBatchOpen, setIsBatchOpen] = useState(false);
+  const [isReleasesOpen, setIsReleasesOpen] = useState(false);
 
   // Batch Analysis Progress
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -502,6 +504,7 @@ export default function App() {
         onOpenHealth={() => setIsHealthOpen(true)}
         onOpenDiagnostics={() => setIsDiagnosticsOpen(true)}
         onOpenExport={() => setIsExportOpen(true)}
+        onOpenReleases={() => setIsReleasesOpen(true)}
         onSaveProject={handleSaveProject}
         onLoadProject={handleLoadProject}
         enableSpectrogram={settings.enableSpectrogram}
@@ -576,6 +579,11 @@ export default function App() {
         files={files}
         mode={mode}
         activeFile={activeFile}
+      />
+
+      <ReleasesModal
+        isOpen={isReleasesOpen}
+        onClose={() => setIsReleasesOpen(false)}
       />
 
       <BatchProgressModal

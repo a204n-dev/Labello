@@ -1,0 +1,81 @@
+name: Build and Release Windows Executables
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version tag (e.g. v1.0.0)'
+        required: false
+        default: 'v1.0.0'
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    name: Package Windows .exe Release
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Project Dependencies
+        run: npm install
+
+      - name: Install Desktop Packager Tools
+        run: npm install --save-dev electron@32.1.2 electron-builder@25.1.8
+
+      - name: Build Web Application
+        run: npm run build
+
+      - name: Compile Windows Installer (.exe) & Portable Executable
+        run: npx electron-builder --win nsis portable --config electron-builder.json
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate SHA-256 Checksums
+        shell: pwsh
+        run: |
+          Get-ChildItem -Path release/*.exe | ForEach-Object {
+            $hash = (Get-FileHash -Path $_.FullName -Algorithm SHA256).Hash.ToLower()
+            "$hash  $($_.Name)" | Out-File -FilePath release/checksums-sha256.txt -Append -Encoding ascii
+          }
+          Get-Content release/checksums-sha256.txt
+
+      - name: Create GitHub Release with Windows .exe Assets
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+        with:
+          name: "VLabeler Next Release ${{ github.ref_name || inputs.version }}"
+          tag_name: ${{ github.ref_name || inputs.version }}
+          draft: false
+          prerelease: false
+          files: |
+            release/*.exe
+            release/checksums-sha256.txt
+          body: |
+            ## VLabeler Next - Unified Vocal Labeling Workstation
+
+            ### Windows Downloads:
+            - **Windows Installer (`.exe`)**: Recommended for most users. Automatically creates desktop shortcuts and start menu items.
+            - **Windows Portable (`.exe`)**: Standalone executable. Run directly without installation.
+
+            ### Verified Checksums:
+            Refer to `checksums-sha256.txt` attached below for cryptographic verification.
+
+            ### System Requirements:
+            - Windows 10 / Windows 11 (64-bit)
+            - DirectX 11 / DirectML or NVIDIA CUDA compatible GPU recommended for accelerated local deep-learning models (SOFA / MFA / Whisper).
+            - Minimum 4 GB RAM (8 GB+ recommended).
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
