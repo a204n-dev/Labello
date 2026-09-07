@@ -20,6 +20,9 @@ jobs:
     runs-on: windows-latest
     permissions:
       contents: write
+    env:
+      # Prevent npm from attempting optional (native) dependencies that can fail on runners
+      NPM_CONFIG_OPTIONAL: 'false'
 
     steps:
       - name: Checkout Repository
@@ -32,11 +35,12 @@ jobs:
         with:
           node-version: 22
 
-      - name: Install Project Dependencies
-        run: npm install
+      - name: Install Project Dependencies (no optional deps)
+        # Use npm ci for reproducible installs and skip optional native packages
+        run: npm ci --no-optional
 
-      - name: Install Desktop Packager Tools
-        run: npm install --save-dev electron@32.1.2 electron-builder@25.1.8
+      - name: Install Desktop Packager Tools (no optional deps)
+        run: npm install --no-optional --save-dev electron@32.1.2 electron-builder@25.1.8
 
       - name: Build Web Application
         run: npm run build
