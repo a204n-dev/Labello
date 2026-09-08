@@ -50,39 +50,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   const startWidthRef = useRef(0);
   const startXRef = useRef(0);
 
-  if (!isOpen) {
-    return (
-      <button
-        onClick={onToggle}
-        className="fixed right-0 top-[var(--header-height)] z-30 w-10 h-12 bg-bg-secondary border-l border-border-subtle flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-bg-tertiary transition-colors"
-        title="Show Properties (P)"
-        aria-label="Show Properties"
-      >
-        <ChevronLeft className="w-5 h-5" />
-      </button>
-    );
-  }
-
-  if (!activeFile) {
-    return (
-      <aside className="bg-bg-secondary border-l border-border-subtle flex flex-col select-none text-text-secondary overflow-hidden" style={{ width: `${width}px`, minWidth: '240px', maxWidth: '480px' }}>
-        <div className="flex items-center justify-between p-3 border-b border-border-subtle/80">
-          <span className="text-xs font-semibold text-text-muted uppercase tracking-wider">Acoustic Properties</span>
-          <button onClick={onToggle} className="p-1.5 text-text-secondary hover:text-text-primary hover:bg-bg-tertiary rounded-lg transition-colors" title="Hide Properties (P)">
-            <ChevronRight className="w-4 h-4" />
-          </button>
-        </div>
-        <div className="flex-1 flex items-center justify-center p-4 text-xs text-text-muted">
-          Select a sample to inspect acoustic properties.
-        </div>
-      </aside>
-    );
-  }
-
-  const selectedPhoneme = activeFile.phonemes?.find(p => p.id === selectedPhonemeId) || activeFile.phonemes?.[0];
-  const oto = activeFile.oto;
-  const isHigh = activeFile.confidence >= 90;
-  const isMedium = activeFile.confidence >= 70 && activeFile.confidence < 90;
+  const oto = activeFile?.oto;
 
   const handleOtoChange = useCallback((key: keyof OtoParameters, value: number) => {
     if (!oto) return;
@@ -118,6 +86,39 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
       window.removeEventListener('mouseup', up);
     };
   }, [resizing, onWidthChange]);
+
+  if (!isOpen) {
+    return (
+      <button
+        onClick={onToggle}
+        className="fixed right-0 top-[var(--header-height)] z-30 w-10 h-12 bg-bg-secondary border-l border-border-subtle flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-bg-tertiary transition-colors"
+        title="Show Properties (P)"
+        aria-label="Show Properties"
+      >
+        <ChevronLeft className="w-5 h-5" />
+      </button>
+    );
+  }
+
+  if (!activeFile) {
+    return (
+      <aside className="bg-bg-secondary border-l border-border-subtle flex flex-col select-none text-text-secondary overflow-hidden" style={{ width: `${width}px`, minWidth: '240px', maxWidth: '480px' }}>
+        <div className="flex items-center justify-between p-3 border-b border-border-subtle/80">
+          <span className="text-xs font-semibold text-text-muted uppercase tracking-wider">Acoustic Properties</span>
+          <button onClick={onToggle} className="p-1.5 text-text-secondary hover:text-text-primary hover:bg-bg-tertiary rounded-lg transition-colors" title="Hide Properties (P)">
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="flex-1 flex items-center justify-center p-4 text-xs text-text-muted">
+          Select a sample to inspect acoustic properties.
+        </div>
+      </aside>
+    );
+  }
+
+  const selectedPhoneme = activeFile.phonemes?.find(p => p.id === selectedPhonemeId) || activeFile.phonemes?.[0];
+  const isHigh = activeFile.confidence >= 90;
+  const isMedium = activeFile.confidence >= 70 && activeFile.confidence < 90;
 
   return (
     <aside className="bg-bg-secondary border-l border-border-subtle flex flex-col select-none text-text-secondary overflow-hidden" style={{ width: `${width}px`, minWidth: '240px', maxWidth: '480px' }}>
