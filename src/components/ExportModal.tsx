@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Download, Copy, Check, FileCode, Sliders } from 'lucide-react';
+import { X, Download, Copy, Check, FileCode, Sliders, ChevronDown } from 'lucide-react';
 import { AudioFileItem, WorkstationMode, LineEnding, TextEncoding } from '../types/workstation';
 import { generateOtoIniContent, createOtoIniBlob } from '../services/oto/otoExporter';
 import { exportDiffSingerJson, exportLabText, exportTextGrid } from '../services/diffsinger/diffsingerExporter';
@@ -8,6 +8,9 @@ import {
   generateVLabelerDiffSingerProfile, 
   exportVLabelerProjectDescriptor 
 } from '../services/vlabeler/vlabelerCompat';
+import { Modal } from './ui/Modal';
+import { Select } from './ui/Select';
+import { Button } from './ui/Button';
 
 interface ExportModalProps {
   isOpen: boolean;
@@ -90,155 +93,133 @@ export const ExportModal: React.FC<ExportModalProps> = ({
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const utauFormatOptions = [
+    { value: 'oto_ini', label: 'Standard UTAU oto.ini' },
+    { value: 'vlabeler_labeler', label: 'vLabeler Profile (oto.labeler.json)' },
+    { value: 'vlabeler_project', label: 'vLabeler Project Descriptor (.json)' },
+  ];
+
+  const diffSingerFormatOptions = [
+    { value: 'ds_json', label: 'DiffSinger Dataset (.ds JSON)' },
+    { value: 'lab', label: 'HTS / Phoneme Duration (.lab)' },
+    { value: 'textgrid', label: 'Praat Interval Tier (.TextGrid)' },
+    { value: 'vlabeler_labeler', label: 'vLabeler Profile (diffsinger.labeler.json)' },
+    { value: 'vlabeler_project', label: 'vLabeler Project Descriptor (.json)' },
+  ];
+
+  const encodingOptions = [
+    { value: 'Shift-JIS', label: 'Shift-JIS (Windows UTAU Native)' },
+    { value: 'UTF-8-BOM', label: 'UTF-8 with BOM (OpenUtau / Windows)' },
+    { value: 'UTF-8', label: 'UTF-8 Standard' },
+  ];
+
+  const lineEndingOptions = [
+    { value: 'CRLF', label: 'CRLF (\\r\\n - Windows Standard)' },
+    { value: 'LF', label: 'LF (\\n - Unix)' },
+  ];
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4">
-      <div className="w-full max-w-3xl bg-slate-900 border border-slate-800 rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[88vh] text-slate-200">
-        
-        {/* Header */}
-        <div className="px-5 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-950">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
-              <Download className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="text-sm font-bold text-white">
-                Export {mode === 'utau' ? 'UTAU Voicebank OTO.INI' : 'DiffSinger Dataset Labels'}
-              </h2>
-              <p className="text-xs text-slate-400">
-                Native Windows compatibility with CRLF line endings and configurable text encodings.
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={`Export ${mode === 'utau' ? 'UTAU Voicebank OTO.INI' : 'DiffSinger Dataset Labels'}`}
+      description="Native Windows compatibility with CRLF line endings and configurable text encodings."
+      icon={<Download className="w-5 h-5" />}
+      size="xl"
+    >
+      {/* Configuration Row */}
+      <div className="flex flex-wrap items-center gap-4 text-xs mb-4 p-4 bg-bg-tertiary/50 border border-border-subtle/80 rounded-lg">
+        {mode === 'utau' ? (
+          <>
+            <Select
+              label="Format"
+              value={utauFormat}
+              onChange={(e) => setUtauFormat(e.target.value as any)}
+              options={utauFormatOptions}
+              placeholder="Select format"
+              className="min-w-[200px]"
+            />
 
-        {/* Configuration Row */}
-        <div className="p-4 bg-slate-950/60 border-b border-slate-800/80 flex flex-wrap items-center gap-4 text-xs">
-          {mode === 'utau' ? (
-            <>
-              <div className="flex items-center gap-2">
-                <span className="text-slate-400 font-medium">Format:</span>
-                <select
-                  id="utau-format-select"
-                  value={utauFormat}
-                  onChange={(e) => setUtauFormat(e.target.value as any)}
-                  className="bg-slate-900 border border-slate-800 text-slate-200 rounded px-2 py-1 outline-none focus:border-indigo-500"
-                >
-                  <option value="oto_ini">Standard UTAU oto.ini</option>
-                  <option value="vlabeler_labeler">vLabeler Profile (oto.labeler.json)</option>
-                  <option value="vlabeler_project">vLabeler Project Descriptor (.json)</option>
-                </select>
-              </div>
+            {utauFormat === 'oto_ini' && (
+              <>
+                <Select
+                  label="Encoding"
+                  value={encoding}
+                  onChange={(e) => setEncoding(e.target.value as TextEncoding)}
+                  options={encodingOptions}
+                  placeholder="Select encoding"
+                  className="min-w-[240px]"
+                />
 
-              {utauFormat === 'oto_ini' && (
-                <>
-                  <div className="flex items-center gap-2">
-                    <span className="text-slate-400 font-medium">Encoding:</span>
-                    <select
-                      id="encoding-select"
-                      value={encoding}
-                      onChange={(e) => setEncoding(e.target.value as TextEncoding)}
-                      className="bg-slate-900 border border-slate-800 text-slate-200 rounded px-2 py-1 outline-none focus:border-indigo-500"
-                    >
-                      <option value="Shift-JIS">Shift-JIS (Windows UTAU Native)</option>
-                      <option value="UTF-8-BOM">UTF-8 with BOM (OpenUtau / Windows)</option>
-                      <option value="UTF-8">UTF-8 Standard</option>
-                    </select>
-                  </div>
+                <Select
+                  label="Line Endings"
+                  value={lineEnding}
+                  onChange={(e) => setLineEnding(e.target.value as LineEnding)}
+                  options={lineEndingOptions}
+                  placeholder="Select line ending"
+                  className="min-w-[220px]"
+                />
 
-                  <div className="flex items-center gap-2">
-                    <span className="text-slate-400 font-medium">Line Endings:</span>
-                    <select
-                      id="line-ending-select"
-                      value={lineEnding}
-                      onChange={(e) => setLineEnding(e.target.value as LineEnding)}
-                      className="bg-slate-900 border border-slate-800 text-slate-200 rounded px-2 py-1 outline-none focus:border-indigo-500"
-                    >
-                      <option value="CRLF">CRLF (\r\n - Windows Standard)</option>
-                      <option value="LF">LF (\n - Unix)</option>
-                    </select>
-                  </div>
+                <label className="flex items-center gap-1.5 text-text-secondary cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={includeComments}
+                    onChange={(e) => setIncludeComments(e.target.checked)}
+                    className="rounded border-border-subtle text-mode-utau focus:ring-0 w-3.5 h-3.5"
+                  />
+                  <span className="text-text-secondary">Include header comments</span>
+                </label>
+              </>
+            )}
+          </>
+        ) : (
+          <Select
+            label="Format"
+            value={diffSingerFormat}
+            onChange={(e) => setDiffSingerFormat(e.target.value as any)}
+            options={diffSingerFormatOptions}
+            placeholder="Select format"
+            className="min-w-[240px]"
+          />
+        )}
+      </div>
 
-                  <label className="flex items-center gap-1.5 text-slate-300 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={includeComments}
-                      onChange={(e) => setIncludeComments(e.target.checked)}
-                      className="rounded border-slate-800 text-indigo-600 focus:ring-0"
-                    />
-                    <span>Include header comments</span>
-                  </label>
-                </>
-              )}
-            </>
-          ) : (
-            <div className="flex items-center gap-2">
-              <span className="text-slate-400 font-medium">Format:</span>
-              <select
-                id="diffsinger-format-select"
-                value={diffSingerFormat}
-                onChange={(e) => setDiffSingerFormat(e.target.value as any)}
-                className="bg-slate-900 border border-slate-800 text-slate-200 rounded px-2 py-1 outline-none focus:border-indigo-500"
-              >
-                <option value="ds_json">DiffSinger Dataset (.ds JSON)</option>
-                <option value="lab">HTS / Phoneme Duration (.lab)</option>
-                <option value="textgrid">Praat Interval Tier (.TextGrid)</option>
-                <option value="vlabeler_labeler">vLabeler Profile (diffsinger.labeler.json)</option>
-                <option value="vlabeler_project">vLabeler Project Descriptor (.json)</option>
-              </select>
-            </div>
-          )}
-        </div>
-
-        {/* Live Output Preview */}
-        <div className="p-4 flex-1 flex flex-col min-h-0 bg-slate-950">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-mono text-slate-400 flex items-center gap-1">
-              <FileCode className="w-3.5 h-3.5 text-indigo-400" />
-              <span>{downloadFileName}</span>
-            </span>
-            <button
-              onClick={handleCopy}
-              className="flex items-center gap-1 text-[11px] text-slate-400 hover:text-white px-2 py-0.5 rounded hover:bg-slate-800 transition-colors"
-            >
-              {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-              <span>{copied ? 'Copied!' : 'Copy'}</span>
-            </button>
-          </div>
-
-          <pre className="flex-1 bg-slate-900 border border-slate-800 rounded-lg p-3 text-xs font-mono text-slate-300 overflow-auto whitespace-pre leading-relaxed selection:bg-indigo-600">
-            {outputText || '# No configured labels available to export.'}
-          </pre>
-        </div>
-
-        {/* Footer */}
-        <div className="px-5 py-3 border-t border-slate-800 bg-slate-950 flex items-center justify-between">
-          <span className="text-xs text-slate-500">
-            {files.length} sample{files.length === 1 ? '' : 's'} included in export
+      {/* Live Output Preview */}
+      <div className="flex-1 flex flex-col min-h-0">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs font-mono text-text-muted flex items-center gap-1">
+            <FileCode className="w-3.5 h-3.5 text-mode-utau" />
+            <span>{downloadFileName}</span>
           </span>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={onClose}
-              className="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-md transition-colors"
-            >
-              Close
-            </button>
-            <button
-              id="confirm-download-btn"
-              onClick={handleDownload}
-              className="flex items-center gap-1.5 px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white text-xs font-semibold rounded-md shadow-sm transition-all"
-            >
-              <Download className="w-3.5 h-3.5" />
-              <span>Download {downloadFileName}</span>
-            </button>
-          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleCopy}
+            icon={copied ? <Check className="w-3.5 h-3.5 text-state-success-text" /> : <Copy className="w-3.5 h-3.5" />}
+          >
+            {copied ? 'Copied!' : 'Copy'}
+          </Button>
+        </div>
+
+        <pre className="flex-1 bg-bg-tertiary border border-border-subtle rounded-lg p-3 text-xs font-mono text-text-secondary overflow-auto whitespace-pre leading-relaxed selection:bg-mode-utau/30">
+          {outputText || '# No configured labels available to export.'}
+        </pre>
+      </div>
+
+      {/* Footer */}
+      <div className="flex items-center justify-between pt-4 border-t border-border-subtle mt-4">
+        <span className="text-xs text-text-muted">
+          {files.length} sample{files.length === 1 ? '' : 's'} included in export
+        </span>
+        <div className="flex items-center gap-2">
+          <Button variant="secondary" size="md" onClick={onClose}>
+            Close
+          </Button>
+          <Button variant="primary" size="md" onClick={handleDownload} icon={<Download className="w-3.5 h-3.5" />}>
+            Download {downloadFileName}
+          </Button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 };

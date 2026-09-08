@@ -4,11 +4,15 @@
  */
 
 import React, { useState, useRef } from 'react';
-import { X, Upload, FileText, AlertCircle, CheckCircle, HelpCircle, Sliders } from 'lucide-react';
+import { X, Upload, FileText, AlertCircle, CheckCircle, HelpCircle, Sliders, ChevronDown } from 'lucide-react';
 import { OtoParameters, ParsedOtoEntry, AudioFileItem } from '../types/workstation';
 import { parseOtoIni, ParsedOtoEntry as ParsedEntry } from '../services/oto/otoParser';
 import { compareBatch, formatComparisonTable, OtoComparisonResult } from '../services/oto/otoUpdater';
 import { matchReimportedFile } from '../services/audio/projectStore';
+import { Modal } from './ui/Modal';
+import { Select } from './ui/Select';
+import { Button } from './ui/Button';
+import { Input } from './ui/Input';
 
 interface ImportOtoModalProps {
   isOpen: boolean;
@@ -53,7 +57,6 @@ export const ImportOtoModal: React.FC<ImportOtoModalProps> = ({
   };
 
   const handleGenerateComparisons = () => {
-    // Build generated OTO map from current files (they should have been analyzed)
     const generatedMap = new Map<string, OtoParameters>();
     const durations = new Map<string, number>();
     const aliasMap = new Map<string, string>();
@@ -73,7 +76,6 @@ export const ImportOtoModal: React.FC<ImportOtoModalProps> = ({
 
     const cmps = compareBatch(baseEntries, generatedMap, aliasMap, durations);
     setComparisons(cmps);
-    // Initialize accepted params from high-confidence changes
     const initialAccepted: Record<string, Set<keyof OtoParameters>> = {};
     for (const c of cmps) {
       initialAccepted[c.fileName] = new Set(
@@ -94,7 +96,7 @@ export const ImportOtoModal: React.FC<ImportOtoModalProps> = ({
   const handleApply = () => {
     const finalComparisons = comparisons.map(c => {
       const accepted = acceptedParams[c.fileName] || new Set();
-      return { ...c, mergedOto: c.mergedOto }; // mergedOto computed in onImported
+      return { ...c, mergedOto: c.mergedOto };
     });
     onImported(finalComparisons);
     onClose();
@@ -108,107 +110,106 @@ export const ImportOtoModal: React.FC<ImportOtoModalProps> = ({
 
   if (step === 'file') {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4">
-        <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-xl shadow-2xl overflow-hidden text-slate-200">
-          <div className="px-5 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-950">
-            <div className="flex items-center gap-2.5">
-              <div className="p-2 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
-                <Upload className="w-5 h-5" />
-              </div>
-              <h2 className="text-sm font-bold text-white">Import Base OTO</h2>
-            </div>
-            <button onClick={onClose} className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800">
-              <X className="w-4 h-4" />
-            </button>
+      <Modal
+        isOpen={isOpen}
+        onClose={onClose}
+        title="Import Base OTO"
+        icon={<Upload className="w-5 h-5" />}
+        size="md"
+      >
+        <div className="space-y-4">
+          <div
+            className="text-center py-8 border-2 border-dashed border-border-default rounded-lg hover:border-border-focus hover:bg-bg-tertiary/50 transition-colors cursor-pointer"
+            onClick={() => fileInputRef.current?.click()}
+            onDragOver={e => { e.preventDefault(); e.currentTarget.classList.add('border-border-focus', 'bg-bg-tertiary/50'); }}
+            onDragLeave={e => e.currentTarget.classList.remove('border-border-focus', 'bg-bg-tertiary/50')}
+            onDrop={e => { e.preventDefault(); e.currentTarget.classList.remove('border-border-focus', 'bg-bg-tertiary/50'); if (e.dataTransfer.files[0]) handleFileSelect(e.dataTransfer.files[0]); }}>
+            <input ref={fileInputRef} type="file" accept=".ini,.oto,.txt" className="hidden" onChange={e => e.target.files?.[0] && handleFileSelect(e.target.files[0])} />
+            <FileText className="w-12 h-12 mx-auto mb-3 text-text-muted" />
+            <p className="text-sm font-medium text-text-primary">Drop oto.ini here or click to select</p>
+            <p className="text-xs text-text-muted mt-1">Shift-JIS / UTF-8 / UTF-8-BOM auto-detected</p>
           </div>
 
-          <div className="p-5 space-y-4">
-            <div className="text-center py-6 border-2 border-dashed border-slate-700 rounded-lg"
-              onClick={() => fileInputRef.current?.click()}
-              onDragOver={e => { e.preventDefault(); e.currentTarget.classList.add('border-indigo-500', 'bg-indigo-950/30'); }}
-              onDragLeave={e => e.currentTarget.classList.remove('border-indigo-500', 'bg-indigo-950/30')}
-              onDrop={e => { e.preventDefault(); e.currentTarget.classList.remove('border-indigo-500', 'bg-indigo-950/30'); if (e.dataTransfer.files[0]) handleFileSelect(e.dataTransfer.files[0]); }}>
-              <input ref={fileInputRef} type="file" accept=".ini,.oto,.txt" className="hidden" onChange={e => e.target.files?.[0] && handleFileSelect(e.target.files[0])} />
-              <FileText className="w-10 h-10 mx-auto mb-2 text-slate-500" />
-              <p className="text-sm font-medium">Drop oto.ini here or click to select</p>
-              <p className="text-xs text-slate-500 mt-1">Shift-JIS / UTF-8 / UTF-8-BOM auto-detected</p>
+          {errors.length > 0 && (
+            <div className="bg-state-error-bg border border-state-error-border rounded-lg p-3 text-state-error-text text-sm space-y-1">
+              {errors.map((e, i) => <div key={i} className="flex items-center gap-2"><AlertCircle className="w-4 h-4 shrink-0" />{e}</div>)}
             </div>
+          )}
 
-            {errors.length > 0 && (
-              <div className="bg-rose-950/60 border border-rose-800/60 rounded p-3 text-rose-200 text-sm space-y-1">
-                {errors.map((e, i) => <div key={i} className="flex items-center gap-2"><AlertCircle className="w-4 h-4 shrink-0" />{e}</div>)}
-              </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Select
+              label="Base OTO Encoding"
+              value={encoding}
+              onChange={e => setEncoding(e.target.value as any)}
+              options={[
+                { value: 'Shift-JIS', label: 'Shift-JIS (Windows UTAU)' },
+                { value: 'UTF-8', label: 'UTF-8' },
+                { value: 'UTF-8-BOM', label: 'UTF-8 with BOM' },
+              ]}
+              placeholder="Select encoding"
+            />
+
+            <Select
+              label="Mode"
+              value={mode}
+              onChange={e => setMode(e.target.value as any)}
+              options={[
+                { value: 'hybrid', label: 'Hybrid (smart merge)' },
+                { value: 'update', label: 'Update (replace all)' },
+              ]}
+              placeholder="Select mode"
+            />
+
+            {mode === 'hybrid' && (
+              <>
+                <label className="text-xs font-medium text-text-muted block mb-1">Hybrid Confidence Threshold</label>
+                <input type="range" min={50} max={95} value={hybridThreshold} onChange={e => setHybridThreshold(Number(e.target.value))} className="accent-mode-utau w-full" />
+                <div className="text-right text-xs text-text-muted">{hybridThreshold}%</div>
+              </>
             )}
+          </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <label className="text-xs font-medium text-slate-400">Base OTO Encoding</label>
-              <select value={encoding} onChange={e => setEncoding(e.target.value as any)} className="bg-slate-900 border border-slate-800 text-slate-200 rounded px-2 py-1">
-                <option value="Shift-JIS">Shift-JIS (Windows UTAU)</option>
-                <option value="UTF-8">UTF-8</option>
-                <option value="UTF-8-BOM">UTF-8 with BOM</option>
-              </select>
-              <label className="text-xs font-medium text-slate-400">Mode</label>
-              <select value={mode} onChange={e => setMode(e.target.value as any)} className="bg-slate-900 border border-slate-800 text-slate-200 rounded px-2 py-1">
-                <option value="hybrid">Hybrid (smart merge)</option>
-                <option value="update">Update (replace all)</option>
-              </select>
-              {mode === 'hybrid' && (
-                <>
-                  <label className="text-xs font-medium text-slate-400">Hybrid Confidence Threshold</label>
-                  <input type="range" min={50} max={95} value={hybridThreshold} onChange={e => setHybridThreshold(Number(e.target.value))} className="accent-indigo-500 w-full" />
-                </>
-              )}
-            </div>
-
-            <div className="pt-2 flex gap-2">
-              <button onClick={handleGenerateComparisons} disabled={baseEntries.length === 0} className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium rounded">
-                Next: Review Changes
-              </button>
-              <button onClick={onClose} className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium rounded">
-                Cancel
-              </button>
-            </div>
+          <div className="pt-2 flex gap-2">
+            <Button onClick={handleGenerateComparisons} disabled={baseEntries.length === 0} className="flex-1">
+              Next: Review Changes
+            </Button>
+            <Button variant="secondary" onClick={onClose} className="flex-1">
+              Cancel
+            </Button>
           </div>
         </div>
-      </div>
+      </Modal>
     );
   }
 
-  // Step 2: Review comparisons
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4">
-      <div className="w-full max-w-4xl bg-slate-900 border border-slate-800 rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[88vh] text-slate-200">
-        <div className="px-5 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-950">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400">
-              <Sliders className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="text-sm font-bold text-white">Review OTO Changes</h2>
-              <p className="text-xs text-slate-400">{comparisons.length} files compared — {mode} mode</p>
-            </div>
-          </div>
-          <button onClick={() => setStep('file')} className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800">
-            <X className="w-4 h-4" />
-          </button>
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Review OTO Changes"
+      description={`${comparisons.length} files compared — ${mode} mode`}
+      icon={<Sliders className="w-5 h-5" />}
+      iconBg="bg-state-warning-bg/10"
+      iconColor="text-state-warning-text"
+      size="xl"
+    >
+      {warnings.length > 0 && (
+        <div className="mb-4 px-4 py-2 bg-state-warning-bg border border-state-warning-border rounded-lg text-state-warning-text text-xs space-y-0.5">
+          {warnings.map((w, i) => <div key={i} className="flex items-center gap-1.5"><AlertCircle className="w-3.5 h-3.5 shrink-0" />{w}</div>)}
         </div>
+      )}
 
-        {warnings.length > 0 && (
-          <div className="px-5 py-2 border-b border-slate-800 bg-amber-950/30 text-amber-200 text-xs space-y-0.5">
-            {warnings.map((w, i) => <div key={i} className="flex items-center gap-1.5"><AlertCircle className="w-3.5 h-3.5 shrink-0" />{w}</div>)}
-          </div>
-        )}
-
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {comparisons.map(c => (
-            <div key={c.fileName} className="bg-slate-950 border border-slate-800 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-3">
-                <span className="font-mono text-sm text-white">{c.fileName}</span>
-                <span className="text-xs text-slate-400">{c.alias}</span>
-              </div>
+      <div className="flex-1 overflow-y-auto space-y-4">
+        {comparisons.map(c => (
+          <div key={c.fileName} className="bg-bg-tertiary border border-border-subtle rounded-lg p-4">
+            <div className="flex items-center justify-between mb-3">
+              <span className="font-mono text-sm text-text-primary">{c.fileName}</span>
+              <span className="text-xs text-text-muted">{c.alias}</span>
+            </div>
+            <div className="overflow-x-auto">
               <table className="w-full text-xs font-mono border-collapse">
                 <thead>
-                  <tr className="text-slate-500 border-b border-slate-800">
+                  <tr className="text-text-muted border-b border-border-subtle">
                     <th className="text-left py-1">Param</th>
                     <th className="text-right py-1">Base</th>
                     <th className="text-right py-1">Generated</th>
@@ -221,13 +222,13 @@ export const ImportOtoModal: React.FC<ImportOtoModalProps> = ({
                   {c.changes.map(ch => {
                     const isAccepted = acceptedParams[c.fileName]?.has(ch.param) ?? ch.confidence >= hybridThreshold;
                     return (
-                      <tr key={ch.param} className={`border-b border-slate-800/50 ${isAccepted ? 'bg-emerald-950/30' : ''}`}>
-                        <td className="py-1.5 text-slate-300">{ch.param}</td>
-                        <td className="py-1.5 text-right text-slate-400">{ch.oldValue}</td>
-                        <td className="py-1.5 text-right text-white">{ch.newValue}</td>
+                      <tr key={ch.param} className={`border-b border-border-subtle/50 ${isAccepted ? 'bg-state-success-bg/20' : ''}`}>
+                        <td className="py-1.5 text-text-secondary">{ch.param}</td>
+                        <td className="py-1.5 text-right text-text-muted">{ch.oldValue}</td>
+                        <td className="py-1.5 text-right text-text-primary">{ch.newValue}</td>
                         <td className="py-1.5 text-right">{ch.delta >= 0 ? '+' : ''}{ch.delta}</td>
                         <td className="py-1.5 text-right">
-                          <span className={ch.confidence >= 80 ? 'text-emerald-400' : ch.confidence >= 60 ? 'text-amber-400' : 'text-rose-400'}>
+                          <span className={ch.confidence >= 80 ? 'text-state-success-text' : ch.confidence >= 60 ? 'text-state-warning-text' : 'text-state-error-text'}>
                             {ch.confidence}%
                           </span>
                         </td>
@@ -237,22 +238,22 @@ export const ImportOtoModal: React.FC<ImportOtoModalProps> = ({
                               type="checkbox"
                               checked={isAccepted}
                               onChange={() => toggleParamAccept(c.fileName, ch.param)}
-                              className="rounded border-slate-700 text-indigo-600 focus:ring-0"
+                              className="rounded border-border-subtle text-mode-utau focus:ring-0 w-3.5 h-3.5"
                             />
-                            <span className={isAccepted ? 'text-emerald-300' : 'text-slate-500'}>{isAccepted ? 'Accept' : 'Reject'}</span>
+                            <span className={isAccepted ? 'text-state-success-text' : 'text-text-muted'}>{isAccepted ? 'Accept' : 'Reject'}</span>
                           </label>
                         </td>
                       </tr>
                     );
                   })}
                   {c.changes.length === 0 && (
-                    <tr><td colSpan={6} className="py-3 text-center text-slate-500">No changes</td></tr>
+                    <tr><td colSpan={6} className="py-3 text-center text-text-muted">No changes</td></tr>
                   )}
                 </tbody>
               </table>
-              <div className="mt-2 flex items-center gap-2 text-[11px] text-slate-400">
+              <div className="mt-2 flex items-center gap-2 text-[11px] text-text-muted">
                 <span>Validation: </span>
-                <span className={c.validation.isValid ? 'text-emerald-400' : 'text-rose-400'}>
+                <span className={c.validation.isValid ? 'text-state-success-text' : 'text-state-error-text'}>
                   {c.validation.isValid ? 'Valid' : 'Issues'} ({c.validation.score}/100)
                 </span>
                 {!c.validation.isValid && (
@@ -262,19 +263,18 @@ export const ImportOtoModal: React.FC<ImportOtoModalProps> = ({
             </div>
           ))}
         </div>
+      </div>
 
-        <div className="px-5 py-3 border-t border-slate-800 bg-slate-950 flex items-center justify-between">
-          <button onClick={() => setStep('file')} className="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded">
-            Back
-          </button>
-          <div className="flex items-center gap-2">
-            <button onClick={handleApply} className="flex items-center gap-1.5 px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded shadow-sm">
-              <CheckCircle className="w-3.5 h-3.5" />
-              <span>Apply Changes</span>
-            </button>
-          </div>
+      <div className="flex items-center justify-between pt-4 border-t border-border-subtle">
+        <Button variant="secondary" onClick={() => setStep('file')}>
+          Back
+        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="success" onClick={handleApply} icon={<CheckCircle className="w-3.5 h-3.5" />}>
+            Apply Changes
+          </Button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 };

@@ -17,9 +17,14 @@ import {
   ChevronDown,
   HelpCircle,
   Keyboard,
+  FileText,
+  Layout,
+  PanelRight,
+  Settings,
 } from 'lucide-react';
 import { WorkstationMode, VoicebankProfileId } from '../types/workstation';
 import { VOICEBANK_PROFILES } from '../services/oto/otoProfiles';
+import { Dropdown } from './ui/Dropdown';
 
 interface HeaderProps {
   mode: WorkstationMode;
@@ -199,45 +204,34 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="h-5 w-px bg-border-subtle mx-1 hidden sm:block" />
 
           {/* File Menu */}
-          <div className="relative">
-            <button onClick={() => setFileMenuOpen(!fileMenuOpen)} onBlur={() => setTimeout(() => setFileMenuOpen(false), 150)} className="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-bg-tertiary border border-border-subtle hover:border-border-strong transition-colors" title="File Menu (Alt+F)">
-              <Menu className="w-4 h-4" />
-            </button>
-            {fileMenuOpen && (
-              <div className="absolute right-0 top-full z-50 mt-1 w-56 bg-bg-secondary border border-border-default rounded-lg shadow-xl py-1 text-xs">
-                <button onClick={() => { setFileMenuOpen(false); onOpenAudio?.(); }} className="w-full text-left px-3 py-1.5 hover:bg-bg-tertiary"><Keyboard className="w-3.5 h-3.5 inline mr-2" />Open Audio…</button>
-                <button onClick={() => { setFileMenuOpen(false); onImportOto?.(); }} className="w-full text-left px-3 py-1.5 hover:bg-bg-tertiary">Import Base OTO (oto.ini)…</button>
-                <button onClick={() => { setFileMenuOpen(false); onOpenReclistMatch?.(); }} className="w-full text-left px-3 py-1.5 hover:bg-bg-tertiary">Reclist Match Report…</button>
-                <hr className="border-border-subtle my-1" />
-                <button onClick={() => { setFileMenuOpen(false); onLoadProject(); }} className="w-full text-left px-3 py-1.5 hover:bg-bg-tertiary"><FolderOpen className="w-3.5 h-3.5 inline mr-2" />Open Project (.vbp)…</button>
-                <button onClick={() => { setFileMenuOpen(false); onSaveProject(); }} className="w-full text-left px-3 py-1.5 hover:bg-bg-tertiary"><Save className="w-3.5 h-3.5 inline mr-2" />Save Project (.vbp) <kbd className="ml-2">Ctrl+S</kbd></button>
-              </div>
-            )}
-          </div>
+          <Dropdown
+            trigger={<Menu className="w-4 h-4" />}
+            align="right"
+            items={[
+              { label: 'Open Audio…', onClick: () => onOpenAudio?.(), icon: <Keyboard className="w-3.5 h-3.5" />, shortcut: 'Ctrl+O' },
+              { label: 'Import Base OTO (oto.ini)…', onClick: () => onImportOto?.(), icon: <FolderOpen className="w-3.5 h-3.5" />, dividerAfter: true },
+              { label: 'Reclist Match Report…', onClick: () => onOpenReclistMatch?.(), icon: <FileText className="w-3.5 h-3.5" /> },
+              { dividerAfter: true },
+              { label: 'Open Project (.vbp)…', onClick: onLoadProject, icon: <FolderOpen className="w-3.5 h-3.5" /> },
+              { label: 'Save Project (.vbp)', onClick: onSaveProject, icon: <Save className="w-3.5 h-3.5" />, shortcut: 'Ctrl+S' },
+            ]}
+          >
+            <Menu className="w-4 h-4" />
+          </Dropdown>
 
           {/* View Menu */}
-          <div className="relative">
-            <button onClick={() => setViewMenuOpen(!viewMenuOpen)} onBlur={() => setTimeout(() => setViewMenuOpen(false), 150)} className="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-bg-tertiary border border-border-subtle hover:border-border-strong transition-colors" title="View Menu">
-              <Eye className="w-4 h-4" />
-            </button>
-            {viewMenuOpen && (
-              <div className="absolute right-0 top-full z-50 mt-1 w-48 bg-bg-secondary border border-border-default rounded-lg shadow-xl py-1 text-xs">
-                <button onClick={() => { setViewMenuOpen(false); onToggleSidebar?.(); }} className="w-full text-left px-3 py-1.5 hover:bg-bg-tertiary flex items-center gap-2">
-                  <span className={`w-4 h-4 rounded ${sidebarOpen ? 'bg-state-success-text' : 'bg-border-default'}`} />
-                  Toggle Sidebar <kbd className="ml-auto">B</kbd>
-                </button>
-                <button onClick={() => { setViewMenuOpen(false); onToggleProperties?.(); }} className="w-full text-left px-3 py-1.5 hover:bg-bg-tertiary flex items-center gap-2">
-                  <span className={`w-4 h-4 rounded ${propertiesOpen ? 'bg-state-success-text' : 'bg-border-default'}`} />
-                  Toggle Properties <kbd className="ml-auto">P</kbd>
-                </button>
-                <hr className="border-border-subtle my-1" />
-                <button onClick={onToggleSpectrogram} className="w-full text-left px-3 py-1.5 hover:bg-bg-tertiary flex items-center gap-2">
-                  <span className={`w-4 h-4 rounded ${enableSpectrogram ? 'bg-state-info-text' : 'bg-border-default'}`} />
-                  Spectrogram Overlay
-                </button>
-              </div>
-            )}
-          </div>
+          <Dropdown
+            trigger={<Eye className="w-4 h-4" />}
+            align="right"
+            width="w-52"
+            items={[
+              { label: 'Toggle Sidebar', onClick: () => onToggleSidebar?.(), shortcut: 'B', icon: <Layout className="w-3.5 h-3.5" /> },
+              { label: 'Toggle Properties', onClick: () => onToggleProperties?.(), shortcut: 'P', icon: <Settings className="w-3.5 h-3.5" />, dividerAfter: true },
+              { label: 'Spectrogram Overlay', onClick: onToggleSpectrogram, icon: <Eye className="w-3.5 h-3.5" /> },
+            ]}
+          >
+            <Eye className="w-4 h-4" />
+          </Dropdown>
 
           {/* Help / Shortcuts */}
           <button onClick={() => setShortcutsOpen(!shortcutsOpen)} className="p-1.5 text-text-secondary hover:text-text-primary hover:bg-bg-tertiary rounded-lg transition-colors" title="Keyboard Shortcuts (Shift+?)">
