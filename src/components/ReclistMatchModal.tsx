@@ -173,7 +173,7 @@ export const ReclistMatchModal: React.FC<ReclistMatchModalProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       title="Match Results"
-      description={`${matches.length} entries — {files.length} WAVs, {reclistEntries.length} reclist, {otoEntries.length} OTO`}
+      description={`${matches.length} entries — ${files.length} WAVs, ${reclistEntries.length} reclist entries, ${otoEntries.length} OTO entries`}
       icon={<CheckCircle className="w-5 h-5" />}
       iconBg="bg-state-success-bg/10"
       iconColor="text-state-success-text"

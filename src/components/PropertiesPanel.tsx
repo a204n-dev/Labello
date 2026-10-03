@@ -21,6 +21,7 @@ interface PropertiesPanelProps {
   selectedPhonemeId: string | null;
   onUpdateOto: (oto: OtoParameters) => void;
   onUpdateAlias: (alias: string) => void;
+  onUpdateLyrics: (lyrics: string) => void;
   onUpdatePhonemeText: (phonemeId: string, text: string) => void;
   onAcceptFileOrRegion: () => void;
   onReanalyzeCurrent: () => void;
@@ -37,6 +38,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   selectedPhonemeId,
   onUpdateOto,
   onUpdateAlias,
+  onUpdateLyrics,
   onUpdatePhonemeText,
   onAcceptFileOrRegion,
   onReanalyzeCurrent,
@@ -177,9 +179,23 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                 <input id="alias-input" type="text" value={activeFile.alias || ''} onChange={(e) => onUpdateAlias(e.target.value)} placeholder="e.g. ka, - ka, a ka" className="w-full mt-1 bg-bg-tertiary border border-border-subtle rounded-lg px-2 py-1 text-xs font-mono text-text-primary focus:outline-none focus:border-border-focus transition-colors" />
               </div>
             ) : (
-              <div>
-                <label className="text-[10px] uppercase font-semibold text-text-muted">Selected Phoneme</label>
-                <input id="phoneme-input" type="text" value={selectedPhoneme?.phoneme || ''} onChange={(e) => selectedPhoneme && onUpdatePhonemeText(selectedPhoneme.id, e.target.value)} className="w-full mt-1 bg-bg-tertiary border border-border-subtle rounded-lg px-2 py-1 text-xs font-mono text-text-primary focus:outline-none focus:border-border-focus transition-colors" />
+              <div className="space-y-3">
+                <div>
+                  <label htmlFor="lyrics-input" className="text-[10px] uppercase font-semibold text-text-muted">Expected phoneme sequence</label>
+                  <textarea
+                    id="lyrics-input"
+                    value={activeFile.lyrics || ''}
+                    onChange={(e) => onUpdateLyrics(e.target.value)}
+                    placeholder="Enter phonemes separated by spaces, e.g. a i sh i t e r u"
+                    rows={3}
+                    className="w-full mt-1 resize-y bg-bg-tertiary border border-border-subtle rounded-lg px-2 py-1.5 text-xs font-mono text-text-primary placeholder:text-text-muted focus:outline-none focus:border-border-focus transition-colors"
+                  />
+                  <p className="mt-1 text-[10px] text-text-muted">Edit the transcript first, then re-analyze to create a fresh timing estimate.</p>
+                </div>
+                <div>
+                  <label htmlFor="phoneme-input" className="text-[10px] uppercase font-semibold text-text-muted">Selected Phoneme</label>
+                  <input id="phoneme-input" type="text" value={selectedPhoneme?.phoneme || ''} onChange={(e) => selectedPhoneme && onUpdatePhonemeText(selectedPhoneme.id, e.target.value)} className="w-full mt-1 bg-bg-tertiary border border-border-subtle rounded-lg px-2 py-1 text-xs font-mono text-text-primary focus:outline-none focus:border-border-focus transition-colors" />
+                </div>
               </div>
             )}
           </div>
@@ -230,24 +246,21 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
             </div>
           )}
 
-          {/* Multi-Engine Evidence Matrix */}
+          {/* Engine availability */}
           <div className="space-y-2 border-b border-border-subtle/80 pb-3">
             <span className="text-xs font-semibold text-text-secondary flex items-center gap-1">
               <Layers className="w-3.5 h-3.5 text-mode-utau" />
-              <span>Multi-Engine Evidence Matrix</span>
+              <span>Analysis status</span>
             </span>
-            <div className="space-y-1.5 text-[10px] font-mono">
-              {[
-                { name: 'SOFA Singing Aligner', score: 94 },
-                { name: 'MFA Triphone Model', score: 92 },
-                { name: 'Whisper Phonetic ASR', score: 91 },
-                { name: 'Acoustic DSP Envelope', score: 89 },
-              ].map((engine, i) => (
-                <div key={i} className="flex items-center justify-between bg-bg-tertiary/50 px-2 py-1 rounded-lg border border-border-subtle/60">
-                  <span className="text-text-muted">{engine.name}</span>
-                  <span className={`text-state-success-text flex items-center gap-1 ${engine.score >= 90 ? 'font-semibold' : ''}`}>
-                    <Check className="w-3 h-3" /> {engine.score}%
-                  </span>
+            <div className="space-y-1.5 text-[10px]">
+              <div className="flex items-center justify-between bg-bg-tertiary/50 px-2 py-1.5 rounded-lg border border-border-subtle/60">
+                <span className="text-text-muted">Local acoustic DSP</span>
+                <span className="text-state-success-text font-semibold">Available</span>
+              </div>
+              {['SOFA', 'Whisper', 'MFA'].map(engine => (
+                <div key={engine} className="flex items-center justify-between bg-bg-tertiary/50 px-2 py-1.5 rounded-lg border border-border-subtle/60">
+                  <span className="text-text-muted">{engine} adapter</span>
+                  <span className="text-text-muted">Not connected</span>
                 </div>
               ))}
             </div>
@@ -260,11 +273,9 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
               <span>Verification Diagnostic</span>
             </div>
             <p className="text-[10px] text-text-secondary leading-relaxed bg-bg-tertiary/50 p-2 rounded-lg border border-border-subtle/60">
-              {activeFile.confidence >= 90
-                ? 'All 4 analysis engines converge within a 12ms tolerance window. Harmonic formants and plosive closure confirm steady onset.'
-                : activeFile.confidence >= 70
-                ? 'Minor boundary dispersion (~24ms) between ASR and acoustic DSP. Plausible for natural vibrato release.'
-                : 'Significant conflict detected: boundary spread exceeds 45ms. Review onset boundary manually before exporting.'}
+              {activeFile.confidence >= 70
+                ? 'Review the proposed boundaries and confirm they match the audio before export.'
+                : 'These boundaries are DSP-generated starting estimates only. SOFA, Whisper, and MFA are not connected; inspect and correct labels before export.'}
             </p>
           </div>
 

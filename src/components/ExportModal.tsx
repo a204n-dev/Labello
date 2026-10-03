@@ -33,6 +33,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   const [utauFormat, setUtauFormat] = useState<'oto_ini' | 'vlabeler_labeler' | 'vlabeler_project'>('oto_ini');
   const [diffSingerFormat, setDiffSingerFormat] = useState<'ds_json' | 'lab' | 'textgrid' | 'vlabeler_labeler' | 'vlabeler_project'>('ds_json');
   const [copied, setCopied] = useState<boolean>(false);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
@@ -72,7 +73,24 @@ export const ExportModal: React.FC<ExportModalProps> = ({
     }
   }
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
+    setExportError(null);
+    if (window.labelloDesktop) {
+      try {
+        await window.labelloDesktop.saveExport(
+          downloadFileName,
+          outputText,
+          mode === 'utau' && utauFormat === 'oto_ini' ? encoding : 'UTF-8'
+        );
+      } catch (err) {
+        setExportError(err instanceof Error ? err.message : String(err));
+      }
+      return;
+    }
+    if (mode === 'utau' && utauFormat === 'oto_ini' && encoding === 'Shift-JIS') {
+      setExportError('Shift-JIS output is available in the native desktop application. Choose UTF-8 or open the desktop app.');
+      return;
+    }
     const blob = mode === 'utau'
       ? createOtoIniBlob(outputText, encoding)
       : new Blob([outputText], { type: 'text/plain;charset=utf-8' });
@@ -186,6 +204,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
 
       {/* Live Output Preview */}
       <div className="flex-1 flex flex-col min-h-0">
+        {exportError && <div role="alert" className="mb-2 rounded-lg border border-state-error-border bg-state-error-bg px-3 py-2 text-xs text-state-error-text">{exportError}</div>}
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs font-mono text-text-muted flex items-center gap-1">
             <FileCode className="w-3.5 h-3.5 text-mode-utau" />

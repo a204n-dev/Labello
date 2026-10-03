@@ -7,7 +7,7 @@ export class MfaEngine implements IAnalysisEngine {
   readonly name = "Montreal Forced Aligner (MFA)";
   readonly version = "v2.2.17";
   readonly isLocal = true;
-  readonly isInstalled = true;
+  readonly isInstalled = false;
   readonly defaultWeight = 0.90;
 
   async analyzeAudio(

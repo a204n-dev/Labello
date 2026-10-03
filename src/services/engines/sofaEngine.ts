@@ -7,7 +7,7 @@ export class SofaEngine implements IAnalysisEngine {
   readonly name = "SOFA Singing Voice Aligner";
   readonly version = "0.4.1";
   readonly isLocal = true;
-  readonly isInstalled = true;
+  readonly isInstalled = false;
   readonly defaultWeight = 0.95;
 
   async analyzeAudio(

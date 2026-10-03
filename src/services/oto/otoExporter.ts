@@ -39,6 +39,9 @@ export function generateOtoIniContent(files: AudioFileItem[], options: OtoExport
  * Creates a downloadable Blob with appropriate MIME type and encoding header
  */
 export function createOtoIniBlob(content: string, encoding: TextEncoding): Blob {
+  if (encoding === 'Shift-JIS') {
+    throw new Error('Shift-JIS export requires the native desktop application.');
+  }
   if (encoding === 'UTF-8-BOM') {
     // Add UTF-8 BOM bytes 0xEF, 0xBB, 0xBF
     const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);

@@ -98,8 +98,20 @@ export class EngineCoordinator {
       };
     }
 
-    // Extract OTO boundaries
-    const validOtos = results.map(r => r.otoParameters).filter((o): o is OtoParameters => !!o);
+    const otoResults = results.filter((result): result is typeof result & { otoParameters: OtoParameters } => !!result.otoParameters);
+    if (otoResults.length === 0) {
+      return {
+        overallConfidence: 0,
+        agreementLevel: 'conflicted',
+        conflicts: [{
+          regionIndex: 0,
+          phonemeOrParam: 'all',
+          engineVotes: {},
+          maxBoundaryDeltaMs: 0,
+          explanation: 'No engine returned OTO parameters for this sample.',
+        }],
+      };
+    }
     
     // Calculate consensus means
     let totalWeight = 0;
@@ -112,9 +124,8 @@ export class EngineCoordinator {
     const offsetDeltas: number[] = [];
     const preutDeltas: number[] = [];
 
-    results.forEach(r => {
+    otoResults.forEach(r => {
       const oto = r.otoParameters;
-      if (!oto) return;
       const weight = this.engines.get(r.engineId)?.defaultWeight || 0.8;
       totalWeight += weight;
 
@@ -162,8 +173,20 @@ export class EngineCoordinator {
       baseConfidence = 96;
     }
 
+    if (otoResults.length < 2) {
+      agreementLevel = 'split';
+      baseConfidence = Math.min(baseConfidence, 60);
+      conflicts.push({
+        regionIndex: 0,
+        phonemeOrParam: 'OTO estimate',
+        engineVotes: { [otoResults[0].engineId]: 'single local DSP estimate' },
+        maxBoundaryDeltaMs: 0,
+        explanation: 'This is a single-engine acoustic estimate, not a verified consensus. Inspect the timing before export.',
+      });
+    }
+
     return {
-      overallConfidence: Math.min(100, Math.max(10, baseConfidence)),
+      overallConfidence: Math.min(100, Math.max(0, baseConfidence)),
       agreementLevel,
       conflicts,
       verifiedOto: consensusOto,
@@ -174,6 +197,21 @@ export class EngineCoordinator {
     results: Array<{ engineId: string; confidence: number; phonemeVotes?: Array<{ phoneme: string; startMs: number; endMs: number; confidence: number }> }>,
     lyrics: string
   ): CrossVerificationResult {
+    if (results.length === 0) {
+      return {
+        overallConfidence: 0,
+        agreementLevel: 'conflicted',
+        conflicts: [{
+          regionIndex: 0,
+          phonemeOrParam: 'all',
+          engineVotes: {},
+          maxBoundaryDeltaMs: 0,
+          explanation: 'No analysis engine returned phoneme boundaries for this sample.',
+        }],
+        verifiedPhonemes: [],
+      };
+    }
+
     const tokens = lyrics.trim().split(/\s+/).filter(Boolean);
     const effectiveTokens = tokens.length > 0 ? tokens : ['a'];
     const conflicts: CrossVerificationResult['conflicts'] = [];
@@ -209,8 +247,8 @@ export class EngineCoordinator {
         votes[k].boundaryDeltaMs = maxDelta;
       });
 
-      let status: DiffSingerPhoneme['status'] = 'high_confidence';
-      let confidence = 94;
+      let status: DiffSingerPhoneme['status'] = results.length < 2 ? 'needs_review' : 'high_confidence';
+      let confidence = results.length < 2 ? 58 : 94;
 
       if (maxDelta > 50) {
         status = 'conflict';
@@ -225,6 +263,16 @@ export class EngineCoordinator {
       } else if (maxDelta > 22) {
         status = 'moderate';
         confidence = 78;
+      }
+
+      if (results.length < 2) {
+        conflicts.push({
+          regionIndex: idx,
+          phonemeOrParam: token,
+          engineVotes: Object.entries(votes).reduce((acc, [key, vote]) => ({ ...acc, [key]: `${vote.phoneme} (${vote.confidence}%)` }), {}),
+          maxBoundaryDeltaMs: 0,
+          explanation: 'This boundary is an initial single-engine estimate. It has not been verified by a forced aligner.',
+        });
       }
 
       totalScore += confidence;
