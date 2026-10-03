@@ -337,7 +337,8 @@ export default function App() {
           file.audioBuffer,
           file.name,
           file.alias || file.lyrics || 'a',
-          currentMode
+          currentMode,
+          { profileId }
         );
 
         setBatchStage('Saving estimate for manual review');
@@ -544,7 +545,7 @@ export default function App() {
       return f;
     });
     setFiles(updated);
-    commitHistory(updated);
+    scheduleHistory(updated);
   };
 
   const handleImportedOto = (comparisons: OtoComparisonResult[]) => {

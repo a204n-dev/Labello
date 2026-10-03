@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import {
-  AudioWaveform,
   Settings2,
   Download,
   Sparkles,
@@ -131,9 +130,7 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Left: Brand, Mode, Profile */}
         <div className="flex items-center gap-3 min-w-0 flex-1">
           <div className="flex items-center gap-2.5 shrink-0">
-            <div className="w-8 h-8 rounded-lg bg-mode-utau/20 border border-mode-utau/30 flex items-center justify-center text-mode-utau">
-              <AudioWaveform className="w-5 h-5" />
-            </div>
+            <img src="/labello-icon.png" alt="" className="w-8 h-8 rounded-lg object-cover border border-border-subtle" />
             <div className="hidden sm:block">
               <div className="flex items-center gap-2">
                 <span className="font-bold text-sm tracking-tight text-text-primary">Labello</span>

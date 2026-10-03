@@ -16,6 +16,7 @@
     "main": "electron/main.cjs"
   },
   "win": {
+    "icon": "electron/labello.ico",
     "target": [
       {
         "target": "nsis",

@@ -63,8 +63,19 @@ export const WaveformWorkspace: React.FC<WaveformWorkspaceProps> = ({
   const [selection, setSelection] = useState<{ startMs: number; endMs: number } | null>(null);
   const [loopSelection, setLoopSelection] = useState<boolean>(false);
   const [volume, setVolume] = useState<number>(0.9);
+  const [stageHeight, setStageHeight] = useState(220);
 
   const durationMs = activeFile?.durationMs || 1000;
+  const canvasHeight = Math.max(180, Math.min(560, stageHeight - 40));
+
+  useEffect(() => {
+    const stage = containerRef.current;
+    if (!stage) return;
+    const observer = new ResizeObserver(() => setStageHeight(stage.clientHeight));
+    observer.observe(stage);
+    setStageHeight(stage.clientHeight);
+    return () => observer.disconnect();
+  }, []);
 
   // ---- Engine wiring: load buffer when file changes, subscribe to ticks ----
   useEffect(() => {
@@ -223,7 +234,7 @@ export const WaveformWorkspace: React.FC<WaveformWorkspaceProps> = ({
     } catch (err) {
       console.error('Spectrogram render failed:', err);
     }
-  }, [enableSpectrogram, activeFile]);
+  }, [enableSpectrogram, activeFile, canvasHeight, zoom]);
 
   // ---- Waveform canvas ----
   useEffect(() => {
@@ -264,7 +275,7 @@ export const WaveformWorkspace: React.FC<WaveformWorkspaceProps> = ({
       ctx.rect(x, yTop, Math.max(1, width / numPoints), Math.max(1, yBottom - yTop));
     }
     ctx.fill();
-  }, [activeFile, durationMs, enableSpectrogram, zoom]);
+  }, [activeFile, durationMs, enableSpectrogram, zoom, canvasHeight]);
 
   // ---- ms <-> px ----
   const getCanvasWidth = () => {
@@ -377,7 +388,6 @@ export const WaveformWorkspace: React.FC<WaveformWorkspaceProps> = ({
 
   const oto = activeFile.oto;
   const canvasWidth = getCanvasWidth();
-  const canvasHeight = enableSpectrogram ? 220 : 160;
   const offsetPx = oto ? msToPx(oto.offsetMs) : 0;
   const overlapPx = oto ? msToPx(oto.offsetMs + oto.overlapMs) : 0;
   const preutPx = oto ? msToPx(oto.offsetMs + oto.preutteranceMs) : 0;
@@ -418,7 +428,17 @@ export const WaveformWorkspace: React.FC<WaveformWorkspaceProps> = ({
             <button onClick={() => setSelection(null)} className="text-slate-500 hover:text-slate-300 font-sans">Clear</button>
           </>
         ) : (
-          <span className="text-slate-600">Drag on the waveform to select a region • Click to move the playhead</span>
+          mode === 'utau' && oto ? (
+            <div className="flex items-center gap-3 overflow-hidden whitespace-nowrap text-[10px]">
+              <span className="text-blue-400">Offset <b className="text-slate-200">{oto.offsetMs} ms</b></span>
+              <span className="text-emerald-400">Overlap <b className="text-slate-200">{oto.overlapMs} ms</b></span>
+              <span className="text-rose-400">Preutterance <b className="text-slate-200">{oto.preutteranceMs} ms</b></span>
+              <span className="text-pink-400">Fixed <b className="text-slate-200">{oto.fixedMs} ms</b></span>
+              <span className="text-indigo-400">Cutoff <b className="text-slate-200">{oto.cutoffMs} ms</b></span>
+            </div>
+          ) : (
+            <span className="text-slate-600">Drag on the waveform to select a region • Click to move the playhead</span>
+          )
         )}
       </div>
 
@@ -464,21 +484,11 @@ export const WaveformWorkspace: React.FC<WaveformWorkspaceProps> = ({
                 <div className="absolute top-0 bottom-0 bg-rose-500/10 pointer-events-none" style={{ left: `${overlapPx}px`, width: `${Math.max(0, preutPx - overlapPx)}px` }} />
                 <div className="absolute top-0 bottom-0 bg-pink-500/15 pointer-events-none" style={{ left: `${preutPx}px`, width: `${Math.max(0, fixedPx - preutPx)}px` }} />
                 <div className="absolute top-0 bottom-0 right-0 bg-black/60 pointer-events-none" style={{ left: `${cutoffPx}px` }} />
-                <div className="absolute top-0 bottom-0 w-[2px] bg-blue-500 cursor-ew-resize z-10" style={{ left: `${offsetPx}px` }}>
-                  <div className="absolute top-1 -left-2 bg-blue-600 text-[10px] font-mono px-1 rounded text-white shadow">Offset ({oto.offsetMs}ms)</div>
-                </div>
-                <div className="absolute top-0 bottom-0 w-[2px] bg-emerald-400 cursor-ew-resize z-10" style={{ left: `${overlapPx}px` }}>
-                  <div className="absolute top-6 -left-2 bg-emerald-600 text-[10px] font-mono px-1 rounded text-white shadow">Overlap (+{oto.overlapMs}ms)</div>
-                </div>
-                <div className="absolute top-0 bottom-0 w-[2px] bg-rose-500 cursor-ew-resize z-10" style={{ left: `${preutPx}px` }}>
-                  <div className="absolute top-11 -left-2 bg-rose-600 text-[10px] font-mono px-1 rounded text-white shadow font-bold">Preut (+{oto.preutteranceMs}ms)</div>
-                </div>
-                <div className="absolute top-0 bottom-0 w-[2px] bg-pink-500 cursor-ew-resize z-10" style={{ left: `${fixedPx}px` }}>
-                  <div className="absolute top-16 -left-2 bg-pink-600 text-[10px] font-mono px-1 rounded text-white shadow">Fixed (+{oto.fixedMs}ms)</div>
-                </div>
-                <div className="absolute top-0 bottom-0 w-[2px] bg-indigo-400 cursor-ew-resize z-10" style={{ left: `${cutoffPx}px` }}>
-                  <div className="absolute top-1 -right-2 bg-indigo-600 text-[10px] font-mono px-1 rounded text-white shadow">Cutoff ({oto.cutoffMs}ms)</div>
-                </div>
+                <div title={`Offset: ${oto.offsetMs} ms — drag to adjust`} aria-label={`OTO offset ${oto.offsetMs} milliseconds`} className="absolute top-0 bottom-0 w-[2px] bg-blue-500 cursor-ew-resize z-10" style={{ left: `${offsetPx}px` }} />
+                <div title={`Overlap: ${oto.overlapMs} ms — drag to adjust`} aria-label={`OTO overlap ${oto.overlapMs} milliseconds`} className="absolute top-0 bottom-0 w-[2px] bg-emerald-400 cursor-ew-resize z-10" style={{ left: `${overlapPx}px` }} />
+                <div title={`Preutterance: ${oto.preutteranceMs} ms — drag to adjust`} aria-label={`OTO preutterance ${oto.preutteranceMs} milliseconds`} className="absolute top-0 bottom-0 w-[2px] bg-rose-500 cursor-ew-resize z-10" style={{ left: `${preutPx}px` }} />
+                <div title={`Fixed consonant: ${oto.fixedMs} ms — drag to adjust`} aria-label={`OTO fixed consonant ${oto.fixedMs} milliseconds`} className="absolute top-0 bottom-0 w-[2px] bg-pink-500 cursor-ew-resize z-10" style={{ left: `${fixedPx}px` }} />
+                <div title={`Cutoff: ${oto.cutoffMs} ms — drag to adjust`} aria-label={`OTO cutoff ${oto.cutoffMs} milliseconds`} className="absolute top-0 bottom-0 w-[2px] bg-indigo-400 cursor-ew-resize z-10" style={{ left: `${cutoffPx}px` }} />
               </>
             )}
 

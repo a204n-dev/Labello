@@ -186,6 +186,7 @@ function createWindow() {
     minHeight: 720,
     title: 'Labello — Vocal Dataset Workstation',
     backgroundColor: '#020617',
+    icon: path.join(__dirname, 'labello.ico'),
     autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),

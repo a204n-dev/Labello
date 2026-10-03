@@ -14,6 +14,7 @@ import {
   Copy,
 } from 'lucide-react';
 import { AudioFileItem, OtoParameters, DiffSingerPhoneme, WorkstationMode } from '../types/workstation';
+import { validateOto } from '../services/oto/otoValidator';
 
 interface PropertiesPanelProps {
   activeFile: AudioFileItem | null;
@@ -53,6 +54,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   const startXRef = useRef(0);
 
   const oto = activeFile?.oto;
+  const otoValidation = oto && activeFile ? validateOto(oto, activeFile.durationMs) : null;
 
   const handleOtoChange = useCallback((key: keyof OtoParameters, value: number) => {
     if (!oto) return;
@@ -234,6 +236,16 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                 <label className="text-[10px] text-indigo-400 font-medium">Cutoff (Negative from end)</label>
                 <input id="oto-cutoff-input" type="number" value={oto.cutoffMs} onChange={(e) => handleOtoChange('cutoffMs', Number(e.target.value))} className="w-full mt-0.5 bg-bg-tertiary border border-border-subtle rounded-lg px-2 py-1 font-mono text-xs focus:outline-none focus:border-indigo-500 transition-colors" />
               </div>
+
+              {otoValidation && otoValidation.issues.length > 0 && (
+                <div className="space-y-1" role="status" aria-label="OTO timing validation">
+                  {otoValidation.issues.map((issue, index) => (
+                    <p key={`${issue.param}-${index}`} className={`text-[10px] ${issue.severity === 'error' ? 'text-state-error-text' : issue.severity === 'warning' ? 'text-state-warning-text' : 'text-text-muted'}`}>
+                      {issue.message}
+                    </p>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 

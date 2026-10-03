@@ -135,6 +135,9 @@ export const ExportModal: React.FC<ExportModalProps> = ({
     { value: 'CRLF', label: 'CRLF (\\r\\n - Windows Standard)' },
     { value: 'LF', label: 'LF (\\n - Unix)' },
   ];
+  const otoEntryCount = files.filter(file => file.oto).length;
+  const unreviewedOtoCount = files.filter(file => file.oto && file.status !== 'verified').length;
+  const canDownload = mode !== 'utau' || utauFormat !== 'oto_ini' || otoEntryCount > 0;
 
   return (
     <Modal
@@ -205,6 +208,16 @@ export const ExportModal: React.FC<ExportModalProps> = ({
       {/* Live Output Preview */}
       <div className="flex-1 flex flex-col min-h-0">
         {exportError && <div role="alert" className="mb-2 rounded-lg border border-state-error-border bg-state-error-bg px-3 py-2 text-xs text-state-error-text">{exportError}</div>}
+        {mode === 'utau' && utauFormat === 'oto_ini' && otoEntryCount < files.length && (
+          <div role="status" className="mb-2 rounded-lg border border-state-warning-border bg-state-warning-bg px-3 py-2 text-xs text-state-warning-text">
+            {files.length - otoEntryCount} sample{files.length - otoEntryCount === 1 ? ' has' : 's have'} no OTO estimate and will be omitted.
+          </div>
+        )}
+        {mode === 'utau' && utauFormat === 'oto_ini' && unreviewedOtoCount > 0 && (
+          <div role="status" className="mb-2 rounded-lg border border-state-warning-border bg-state-warning-bg px-3 py-2 text-xs text-state-warning-text">
+            {unreviewedOtoCount} OTO estimate{unreviewedOtoCount === 1 ? ' needs' : 's need'} manual review before use in a voicebank.
+          </div>
+        )}
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs font-mono text-text-muted flex items-center gap-1">
             <FileCode className="w-3.5 h-3.5 text-mode-utau" />
@@ -228,13 +241,15 @@ export const ExportModal: React.FC<ExportModalProps> = ({
       {/* Footer */}
       <div className="flex items-center justify-between pt-4 border-t border-border-subtle mt-4">
         <span className="text-xs text-text-muted">
-          {files.length} sample{files.length === 1 ? '' : 's'} included in export
+          {mode === 'utau' && utauFormat === 'oto_ini'
+            ? `${otoEntryCount} of ${files.length} sample${files.length === 1 ? '' : 's'} included`
+            : `${files.length} sample${files.length === 1 ? '' : 's'} included in export`}
         </span>
         <div className="flex items-center gap-2">
           <Button variant="secondary" size="md" onClick={onClose}>
             Close
           </Button>
-          <Button variant="primary" size="md" onClick={handleDownload} icon={<Download className="w-3.5 h-3.5" />}>
+          <Button variant="primary" size="md" onClick={handleDownload} disabled={!canDownload} icon={<Download className="w-3.5 h-3.5" />}>
             Download {downloadFileName}
           </Button>
         </div>

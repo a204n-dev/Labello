@@ -9,6 +9,8 @@ export interface SpectrogramFrame {
 
 export interface AcousticFeatures {
   timeStepMs: number;
+  durationMs: number;
+  hasSignal: boolean;
   rmsEnergy: Float32Array;
   zeroCrossingRate: Float32Array;
   spectralCentroid: Float32Array;
@@ -25,44 +27,53 @@ export interface AcousticFeatures {
 export function analyzeAcousticFeatures(
   audioBuffer: AudioBuffer,
   frameSize: number = 1024,
-  hopSize: number = 256
+  hopSize: number = 256,
+  trackPitch: boolean = true
 ): AcousticFeatures {
+  if (!Number.isInteger(frameSize) || frameSize < 2 || (frameSize & (frameSize - 1)) !== 0) {
+    throw new RangeError('Analysis frame size must be a power of two greater than one.');
+  }
+  if (!Number.isInteger(hopSize) || hopSize < 1) {
+    throw new RangeError('Analysis hop size must be a positive integer.');
+  }
   const channelData = audioBuffer.getChannelData(0);
   const sampleRate = audioBuffer.sampleRate;
-  const numFrames = Math.floor((channelData.length - frameSize) / hopSize);
+  const durationMs = audioBuffer.duration * 1000;
+  const numFrames = Math.max(1, Math.floor(Math.max(0, channelData.length - frameSize) / hopSize) + 1);
   const timeStepMs = (hopSize / sampleRate) * 1000;
+  const frameDurationMs = (frameSize / sampleRate) * 1000;
 
   const rmsEnergy = new Float32Array(numFrames);
   const zeroCrossingRate = new Float32Array(numFrames);
   const spectralCentroid = new Float32Array(numFrames);
   const f0Contour = new Float32Array(numFrames);
+  const fftReal = new Float32Array(frameSize);
+  const fftImag = new Float32Array(frameSize);
+  const hann = new Float32Array(frameSize);
 
-  let maxRms = 0.0001;
+  let maxRms = 0;
+  for (let i = 0; i < frameSize; i++) {
+    hann[i] = 0.5 * (1 - Math.cos((2 * Math.PI * i) / Math.max(1, frameSize - 1)));
+  }
 
   for (let f = 0; f < numFrames; f++) {
     const startIdx = f * hopSize;
     let sumSq = 0;
     let zcrCount = 0;
-    let weightedFreqSum = 0;
-    let magnitudeSum = 0;
 
     for (let i = 0; i < frameSize; i++) {
       const idx = startIdx + i;
-      const s = channelData[idx];
+      const s = channelData[idx] || 0;
       sumSq += s * s;
+      fftReal[i] = s * hann[i];
+      fftImag[i] = 0;
 
       if (i > 0) {
-        const prevS = channelData[idx - 1];
+        const prevS = channelData[idx - 1] || 0;
         if ((s >= 0 && prevS < 0) || (s < 0 && prevS >= 0)) {
           zcrCount++;
         }
       }
-
-      // Approximate frequency weighting
-      const mag = Math.abs(s);
-      const freq = (i / frameSize) * (sampleRate / 2);
-      weightedFreqSum += freq * mag;
-      magnitudeSum += mag;
     }
 
     const rms = Math.sqrt(sumSq / frameSize);
@@ -70,66 +81,129 @@ export function analyzeAcousticFeatures(
     if (rms > maxRms) maxRms = rms;
 
     zeroCrossingRate[f] = zcrCount / frameSize;
-    spectralCentroid[f] = magnitudeSum > 0.0001 ? (weightedFreqSum / magnitudeSum) : 0;
+    spectralCentroid[f] = computeSpectralCentroid(fftReal, fftImag, sampleRate);
 
-    // Pitch detection via autocorrelation if frame has enough energy
-    if (rms > 0.02) {
+    if (trackPitch && rms > 0.02) {
       f0Contour[f] = estimatePitchAutocorrelation(channelData, startIdx, frameSize, sampleRate);
-    } else {
-      f0Contour[f] = 0;
     }
   }
 
   // Normalize RMS energy relative to peak
   for (let f = 0; f < numFrames; f++) {
-    rmsEnergy[f] = rmsEnergy[f] / maxRms;
+    rmsEnergy[f] = maxRms > 0 ? rmsEnergy[f] / maxRms : 0;
   }
 
-  // Silence threshold is ~5% of peak RMS or adaptive noise floor
-  const silenceThreshold = 0.06;
+  const hasSignal = maxRms > 0.0001;
+  const sortedRms = Array.from(rmsEnergy, (energy) => energy * maxRms).sort((a, b) => a - b);
+  const noiseFloor = sortedRms[Math.floor((sortedRms.length - 1) * 0.2)] || 0;
+  const onsetThreshold = hasSignal
+    ? Math.min(maxRms * 0.35, Math.max(maxRms * 0.08, noiseFloor * 2.5))
+    : Number.POSITIVE_INFINITY;
+  const decayThreshold = hasSignal
+    ? Math.min(maxRms * 0.2, Math.max(maxRms * 0.035, noiseFloor * 2))
+    : Number.POSITIVE_INFINITY;
 
-  // Find consonant onset: first time energy rises above silence threshold
-  let consonantOnsetCandidateMs = 100;
+  let consonantOnsetCandidateMs = 0;
+  let onsetFrame = 0;
   for (let f = 0; f < numFrames; f++) {
-    if (rmsEnergy[f] > silenceThreshold) {
-      consonantOnsetCandidateMs = Math.max(10, f * timeStepMs - 15);
+    if (rmsEnergy[f] * maxRms > onsetThreshold) {
+      onsetFrame = f;
+      consonantOnsetCandidateMs = Math.min(durationMs, f === 0 ? 0 : f * timeStepMs + frameDurationMs / 2);
       break;
     }
   }
 
-  // Find vowel onset: strong jump in energy accompanied by pitch presence or drop in ZCR
-  let vowelOnsetCandidateMs = consonantOnsetCandidateMs + 80;
-  for (let f = Math.floor(consonantOnsetCandidateMs / timeStepMs); f < numFrames - 5; f++) {
-    const energyJump = rmsEnergy[f] > 0.3;
-    const hasPeriodicPitch = f0Contour[f] > 80 && f0Contour[f] < 800;
-    const lowZcr = zeroCrossingRate[f] < 0.15;
-
-    if (energyJump && (hasPeriodicPitch || lowZcr)) {
-      vowelOnsetCandidateMs = f * timeStepMs;
-      break;
+  let vowelOnsetCandidateMs = consonantOnsetCandidateMs;
+  let stableVowelFrames = 0;
+  let vowelFound = false;
+  for (let f = onsetFrame; f < numFrames - 5; f++) {
+    const voicedLike = zeroCrossingRate[f] < 0.2 && spectralCentroid[f] < 5000;
+    if (hasSignal && rmsEnergy[f] > 0.2 && voicedLike) {
+      stableVowelFrames++;
+      if (stableVowelFrames >= 2) {
+        vowelOnsetCandidateMs = Math.min(durationMs, Math.max(consonantOnsetCandidateMs, (f - 1) * timeStepMs));
+        vowelFound = true;
+        break;
+      }
+    } else {
+      stableVowelFrames = 0;
     }
   }
+  if (hasSignal && !vowelFound) {
+    vowelOnsetCandidateMs = Math.min(durationMs, consonantOnsetCandidateMs + Math.min(80, Math.max(5, durationMs - consonantOnsetCandidateMs)));
+  }
 
-  // Find decay/cutoff: where energy permanently drops back near silence
-  let decayOffsetCandidateMs = (numFrames - 1) * timeStepMs;
-  for (let f = numFrames - 1; f > Math.floor(vowelOnsetCandidateMs / timeStepMs); f--) {
-    if (rmsEnergy[f] > 0.12) {
-      decayOffsetCandidateMs = Math.min((numFrames - 1) * timeStepMs, (f + 2) * timeStepMs);
+  let decayOffsetCandidateMs = hasSignal ? durationMs : 0;
+  for (let f = numFrames - 1; f >= 0; f--) {
+    if (rmsEnergy[f] * maxRms > decayThreshold) {
+      decayOffsetCandidateMs = Math.min(durationMs, f * timeStepMs + frameDurationMs / 2);
       break;
     }
   }
 
   return {
     timeStepMs,
+    durationMs,
+    hasSignal,
     rmsEnergy,
     zeroCrossingRate,
     spectralCentroid,
     f0Contour,
-    silenceThreshold,
+    silenceThreshold: hasSignal ? onsetThreshold / maxRms : 0,
     vowelOnsetCandidateMs,
     consonantOnsetCandidateMs,
     decayOffsetCandidateMs,
   };
+}
+
+function computeSpectralCentroid(real: Float32Array, imag: Float32Array, sampleRate: number): number {
+  fftTransform(real, imag);
+  const length = real.length;
+  let weightedFrequency = 0;
+  let magnitudeSum = 0;
+  for (let bin = 1; bin < length / 2; bin++) {
+    const magnitude = Math.hypot(real[bin], imag[bin]);
+    weightedFrequency += (bin * sampleRate / length) * magnitude;
+    magnitudeSum += magnitude;
+  }
+  return magnitudeSum > 0 ? weightedFrequency / magnitudeSum : 0;
+}
+
+function fftTransform(real: Float32Array, imag: Float32Array): void {
+  const length = real.length;
+  for (let i = 1, j = 0; i < length; i++) {
+    let bit = length >> 1;
+    for (; j & bit; bit >>= 1) j ^= bit;
+    j ^= bit;
+    if (i < j) {
+      [real[i], real[j]] = [real[j], real[i]];
+      [imag[i], imag[j]] = [imag[j], imag[i]];
+    }
+  }
+
+  for (let size = 2; size <= length; size <<= 1) {
+    const angle = (-2 * Math.PI) / size;
+    const stepReal = Math.cos(angle);
+    const stepImag = Math.sin(angle);
+    for (let start = 0; start < length; start += size) {
+      let weightReal = 1;
+      let weightImag = 0;
+      const halfSize = size >> 1;
+      for (let offset = 0; offset < halfSize; offset++) {
+        const even = start + offset;
+        const odd = even + halfSize;
+        const oddReal = real[odd] * weightReal - imag[odd] * weightImag;
+        const oddImag = real[odd] * weightImag + imag[odd] * weightReal;
+        real[odd] = real[even] - oddReal;
+        imag[odd] = imag[even] - oddImag;
+        real[even] += oddReal;
+        imag[even] += oddImag;
+        const nextWeightReal = weightReal * stepReal - weightImag * stepImag;
+        weightImag = weightReal * stepImag + weightImag * stepReal;
+        weightReal = nextWeightReal;
+      }
+    }
+  }
 }
 
 /**
@@ -155,8 +229,8 @@ function estimatePitchAutocorrelation(
     let norm2 = 0;
 
     for (let i = 0; i < length - lag; i++) {
-      const s1 = data[start + i];
-      const s2 = data[start + i + lag];
+      const s1 = data[start + i] || 0;
+      const s2 = data[start + i + lag] || 0;
       sum += s1 * s2;
       norm1 += s1 * s1;
       norm2 += s2 * s2;
@@ -196,6 +270,8 @@ export function computeSpectrogramCanvasData(
   // Offscreen canvas image buffer
   const imgData = new ImageData(width, height);
   const pixels = imgData.data;
+  const fftReal = new Float32Array(fftSize);
+  const fftImag = new Float32Array(fftSize);
 
   // Windowing function (Hann)
   const hann = new Float32Array(fftSize);
@@ -205,27 +281,19 @@ export function computeSpectrogramCanvasData(
 
   for (let x = 0; x < width; x++) {
     const centerSample = Math.floor((x / width) * totalSamples);
-    const startSample = Math.max(0, centerSample - halfFft);
+    const startSample = Math.max(0, Math.min(totalSamples - fftSize, centerSample - halfFft));
 
-    // Compute simple magnitude response across frequency bins
+    for (let n = 0; n < fftSize; n++) {
+      fftReal[n] = (channelData[startSample + n] || 0) * hann[n];
+      fftImag[n] = 0;
+    }
+    fftTransform(fftReal, fftImag);
+
     for (let y = 0; y < height; y++) {
       // Invert y so 0Hz is at bottom
-      const freqBin = Math.floor(((height - 1 - y) / height) * halfFft);
-      const targetFreq = (freqBin / halfFft) * (sampleRate / 4); // Focus on vocal range <= 11kHz
-
-      let real = 0;
-      let imag = 0;
-      const step = 2;
-
-      for (let n = 0; n < fftSize; n += step) {
-        const s = (channelData[startSample + n] || 0) * hann[n];
-        const angle = (2 * Math.PI * targetFreq * n) / sampleRate;
-        real += s * Math.cos(angle);
-        imag -= s * Math.sin(angle);
-      }
-
-      const mag = Math.sqrt(real * real + imag * imag);
-      const normMag = Math.min(1, Math.log10(1 + mag * 18)); // Logarithmic scaling
+      const freqBin = Math.min(halfFft - 1, Math.floor(((height - 1 - y) / height) * halfFft));
+      const magnitude = Math.hypot(fftReal[freqBin], fftImag[freqBin]) / fftSize;
+      const normMag = Math.min(1, Math.log1p(magnitude * 32) / Math.log(17));
 
       // Heatmap color: Deep slate/blue -> Violet -> Amber -> White
       const pixelIdx = (y * width + x) * 4;

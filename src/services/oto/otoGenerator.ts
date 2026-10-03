@@ -31,12 +31,16 @@ export function generateOtoFromFeatures(
   options: GeneratorOptions = { profile: 'CV' }
 ): OtoParameters {
   const opts = { ...DEFAULTS, ...options };
+  const durationMs = features.durationMs || Math.round(features.rmsEnergy.length * features.timeStepMs);
 
   // Offset: consonant onset with small safety margin
-  const offsetMs = Math.max(0, Math.round(features.consonantOnsetCandidateMs - opts.onsetMarginMs));
+  const offsetMs = Math.min(durationMs, Math.max(0, Math.round(features.consonantOnsetCandidateMs - opts.onsetMarginMs)));
 
   // Preutterance: vowel onset (where periodic pitch + energy stabilize)
-  const preutteranceMs = Math.max(5, Math.round(features.vowelOnsetCandidateMs - features.consonantOnsetCandidateMs));
+  const preutteranceMs = Math.min(
+    Math.max(0, durationMs - offsetMs),
+    Math.max(5, Math.round(features.vowelOnsetCandidateMs - features.consonantOnsetCandidateMs))
+  );
 
   // Overlap: profile-dependent, or use provided override
   let overlapMs: number;
@@ -45,13 +49,16 @@ export function generateOtoFromFeatures(
   } else {
     overlapMs = estimateOverlapFromProfile(opts.profile, features);
   }
+  overlapMs = Math.max(0, Math.min(overlapMs, durationMs - offsetMs));
 
   // Fixed: slightly past preutterance to protect consonant during resampling
-  const fixedMs = Math.round(preutteranceMs * 1.2 + overlapMs * 0.5);
+  const fixedMs = Math.min(
+    durationMs - offsetMs,
+    Math.max(preutteranceMs, Math.round(preutteranceMs * 1.2 + overlapMs * 0.5))
+  );
 
   // Cutoff: negative from end, where vowel energy decays below threshold
-  const totalDurationMs = Math.round(features.rmsEnergy.length * features.timeStepMs);
-  const cutoffMs = -Math.round(Math.max(50, totalDurationMs - features.decayOffsetCandidateMs));
+  const cutoffMs = -Math.round(Math.max(0, durationMs - features.decayOffsetCandidateMs));
 
   return {
     offsetMs,
@@ -64,19 +71,21 @@ export function generateOtoFromFeatures(
 
 /** Heuristic overlap per voicebank profile. */
 function estimateOverlapFromProfile(profile: GeneratorOptions['profile'], features: AcousticFeatures): number {
-  // Base overlap on consonant type detected from spectral centroid/ZCR at onset
-  const onsetFrame = Math.floor(features.consonantOnsetCandidateMs / features.timeStepMs);
-  const centroidAtOnset = features.spectralCentroid[Math.min(onsetFrame, features.spectralCentroid.length - 1)];
-  const zcrAtOnset = features.zeroCrossingRate[Math.min(onsetFrame, features.zeroCrossingRate.length - 1)];
+  const onsetFrame = Math.max(0, Math.min(
+    features.rmsEnergy.length - 1,
+    Math.floor(features.consonantOnsetCandidateMs / features.timeStepMs)
+  ));
+  const centroidAtOnset = features.spectralCentroid[onsetFrame] || 0;
+  const zcrAtOnset = features.zeroCrossingRate[onsetFrame] || 0;
 
   // High centroid + high ZCR = voiceless fricative (s, sh) → longer overlap
   // Low centroid + low ZCR = vowel-like (n, m) → shorter
   // Mid = plosive (k, t, p) → medium
   let baseOverlap = 40; // default middle ground
 
-  if (centroidAtOnset > 3000 && zcrAtOnset > 0.3) {
+  if (centroidAtOnset > 3000 && zcrAtOnset > 0.18) {
     baseOverlap = 50; // fricative
-  } else if (centroidAtOnset < 1500 && zcrAtOnset < 0.15) {
+  } else if (centroidAtOnset < 1500 && zcrAtOnset < 0.08) {
     baseOverlap = 30; // nasal/voiced
   } else {
     baseOverlap = 35; // plosive
