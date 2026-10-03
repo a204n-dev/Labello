@@ -78,6 +78,7 @@ export interface AudioFileItem {
   channels: number;
   audioBuffer?: AudioBuffer;
   waveformPeaks?: Float32Array; // Min-max interleaved peaks for canvas
+  sourceToken?: string;
   status: 'pending' | 'analyzing' | 'analyzed' | 'review_needed' | 'verified';
   confidence: number; // 0 - 100
   oto?: OtoParameters; // For UTAU

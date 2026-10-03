@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { X, AlertTriangle, CheckCircle2, ArrowRight, CheckCheck, RotateCcw, Settings } from 'lucide-react';
+import React from 'react';
+import { AlertTriangle, CheckCircle2, ArrowRight, CheckCheck } from 'lucide-react';
 import { AudioFileItem } from '../types/workstation';
-import { reviewQueue, ReviewQueueItem } from '../services/workflow/reviewQueue';
 import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
 
@@ -10,6 +9,7 @@ interface ReviewQueueModalProps {
   onClose: () => void;
   files: AudioFileItem[];
   onSelectFile: (id: string) => void;
+  onAcceptFile: (id: string) => void;
   onAcceptAllHighConfidence: () => void;
 }
 
@@ -18,24 +18,15 @@ export const ReviewQueueModal: React.FC<ReviewQueueModalProps> = ({
   onClose,
   files,
   onSelectFile,
+  onAcceptFile,
   onAcceptAllHighConfidence,
 }) => {
   if (!isOpen) return null;
 
-  const [queueItems, setQueueItems] = useState<ReviewQueueItem[]>([]);
-  const [stats, setStats] = useState(reviewQueue.getStats());
-
-  useEffect(() => {
-    const unsubscribe = reviewQueue.subscribe(() => {
-      setQueueItems(reviewQueue.getPending());
-      setStats(reviewQueue.getStats());
-    });
-    setQueueItems(reviewQueue.getPending());
-    setStats(reviewQueue.getStats());
-    return unsubscribe;
-  }, []);
-
-  const reviewFiles = queueItems;
+  const reviewFiles = files.filter(file =>
+    file.status === 'review_needed' ||
+    (file.status === 'analyzed' && (file.confidence < 90 || file.issues.length > 0))
+  );
   const highConfidenceCount = files.filter(f => f.confidence >= 90).length;
 
   return (
@@ -54,7 +45,7 @@ export const ReviewQueueModal: React.FC<ReviewQueueModalProps> = ({
       {/* Batch Quick Action */}
       <div className="mb-4 flex items-center justify-between p-3 bg-bg-tertiary/50 border border-border-subtle/80 rounded-lg">
         <div className="text-xs text-text-muted">
-          <span className="font-semibold text-state-success-text">{highConfidenceCount}</span> samples have verified >90% consensus.
+          <span className="font-semibold text-state-success-text">{highConfidenceCount}</span> samples have verified &gt;90% consensus.
         </div>
         <Button variant="success" size="sm" onClick={onAcceptAllHighConfidence} icon={<CheckCheck className="w-3.5 h-3.5" />}>
           Accept All High-Confidence
@@ -71,37 +62,30 @@ export const ReviewQueueModal: React.FC<ReviewQueueModalProps> = ({
               Your dataset meets the quality threshold. You can safely proceed to export.
             </p>
           </div>
-        ) : (
-          reviewFiles.map((item) => {
-            const file = files.find(f => f.id === item.fileId);
-            const auto = item.autoResult;
-            const cv = auto.cvAnalysis;
+        ) : reviewFiles.map(file => {
             return (
               <div
-                key={item.fileId}
+                key={file.id}
                 className="p-3 bg-bg-tertiary border border-border-subtle rounded-lg hover:border-border-default transition-colors"
               >
                 <div className="min-w-0 pr-4">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-mono text-xs font-bold text-text-primary truncate">{item.fileName}</span>
+                    <span className="font-mono text-xs font-bold text-text-primary truncate">{file.name}</span>
                     <span className="text-[10px] font-mono px-1.5 py-0.5 rounded border flex items-center gap-1"
                       style={{ 
-                        backgroundColor: auto.confidence.overall >= 80 ? 'rgba(16,185,129,0.15)' : auto.confidence.overall >= 60 ? 'rgba(245,158,11,0.15)' : 'rgba(248,113,113,0.15)',
-                        borderColor: auto.confidence.overall >= 80 ? 'rgba(16,185,129,0.4)' : auto.confidence.overall >= 60 ? 'rgba(245,158,11,0.4)' : 'rgba(248,113,113,0.4)',
-                        color: auto.confidence.overall >= 80 ? '#34d399' : auto.confidence.overall >= 60 ? '#fbbf24' : '#f87171'
+                        backgroundColor: file.confidence >= 80 ? 'rgba(16,185,129,0.15)' : file.confidence >= 60 ? 'rgba(245,158,11,0.15)' : 'rgba(248,113,113,0.15)',
+                        borderColor: file.confidence >= 80 ? 'rgba(16,185,129,0.4)' : file.confidence >= 60 ? 'rgba(245,158,11,0.4)' : 'rgba(248,113,113,0.4)',
+                        color: file.confidence >= 80 ? '#34d399' : file.confidence >= 60 ? '#fbbf24' : '#f87171'
                       }}>
-                      {auto.confidence.overall}% Overall
+                      {file.confidence}% Confidence
                     </span>
-                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-bg-tertiary text-text-muted border border-border-subtle">
-                      {cv?.consonantType || '?'} ({cv?.consonantConfidence || 0}%)
-                    </span>
+                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-bg-tertiary text-text-muted border border-border-subtle">{file.status.replace('_', ' ')}</span>
                   </div>
 
                   <p className="text-xs text-text-muted mt-1 flex flex-wrap gap-2">
-                    <span>SNR: {cv?.snrDb?.toFixed(1) || '?'} dB</span>
-                    <span>C→V: {cv?.confidence?.vowelOnset || '?'}%</span>
-                    <span>V.End: {cv?.confidence?.vowelEnd || '?'}%</span>
-                    <span>Val: {auto.validation?.score || '?'}%</span>
+                    <span>{file.issues.length} issue{file.issues.length === 1 ? '' : 's'}</span>
+                    {file.phonemes && <span>{file.phonemes.length} phoneme{file.phonemes.length === 1 ? '' : 's'}</span>}
+                    {file.issues[0] && <span className="truncate">{file.issues[0].message}</span>}
                   </p>
                 </div>
 
@@ -110,15 +94,13 @@ export const ReviewQueueModal: React.FC<ReviewQueueModalProps> = ({
                     variant="success"
                     size="sm"
                     onClick={() => {
-                      reviewQueue.accept(item.fileId);
-                      onSelectFile(item.fileId);
-                      onClose();
+                      onAcceptFile(file.id);
                     }}
                     icon={<CheckCheck className="w-3 h-3" />}
                   >
                     Accept
                   </Button>
-                  <Button variant="primary" size="sm" onClick={() => { onSelectFile(item.fileId); onClose(); }} icon={<ArrowRight className="w-3.5 h-3.5" />}>
+                  <Button variant="primary" size="sm" onClick={() => { onSelectFile(file.id); onClose(); }} icon={<ArrowRight className="w-3.5 h-3.5" />}>
                     Fix Manually
                   </Button>
                 </div>

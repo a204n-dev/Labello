@@ -47,6 +47,7 @@ interface HeaderProps {
   onSaveProject: () => void;
   onLoadProject: () => void;
   onOpenAudio?: () => void;
+  onOpenAudioFolder?: () => void;
   onImportOto?: () => void;
   onOpenReclistMatch?: () => void;
   enableSpectrogram: boolean;
@@ -93,6 +94,7 @@ export const Header: React.FC<HeaderProps> = ({
   onSaveProject,
   onLoadProject,
   onOpenAudio,
+  onOpenAudioFolder,
   onImportOto,
   onOpenReclistMatch,
   enableSpectrogram,
@@ -136,10 +138,10 @@ export const Header: React.FC<HeaderProps> = ({
               <div className="flex items-center gap-2">
                 <span className="font-bold text-sm tracking-tight text-text-primary">Labello</span>
                 <a href="https://github.com/sdercolin/vlabeler" target="_blank" rel="noreferrer" className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-accent-bg text-accent-text border border-accent-border">
-                  vLabeler Core
+                  vLabeler + LabelMakr
                 </a>
               </div>
-              <p className="text-xs text-text-muted leading-none">Smart Auto-OTO & DiffSinger Studio</p>
+              <p className="text-xs text-text-muted leading-none">Vocal dataset workstation</p>
             </div>
           </div>
 
@@ -208,7 +210,8 @@ export const Header: React.FC<HeaderProps> = ({
             trigger={<Menu className="w-4 h-4" />}
             align="right"
             items={[
-              { label: 'Open Audio…', onClick: () => onOpenAudio?.(), icon: <Keyboard className="w-3.5 h-3.5" />, shortcut: 'Ctrl+O' },
+              { label: 'Add Audio Files…', onClick: () => onOpenAudio?.(), icon: <FolderOpen className="w-3.5 h-3.5" />, shortcut: 'Ctrl+O' },
+              { label: 'Open Audio Folder…', onClick: () => onOpenAudioFolder?.(), icon: <FolderOpen className="w-3.5 h-3.5" />, dividerAfter: true },
               { label: 'Import Base OTO (oto.ini)…', onClick: () => onImportOto?.(), icon: <FolderOpen className="w-3.5 h-3.5" />, dividerAfter: true },
               { label: 'Reclist Match Report…', onClick: () => onOpenReclistMatch?.(), icon: <FileText className="w-3.5 h-3.5" /> },
               { dividerAfter: true },
@@ -249,7 +252,7 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Export & Releases */}
           <button onClick={onOpenExport} className="flex items-center gap-1.5 bg-bg-tertiary hover:bg-bg-hover text-text-primary text-xs font-medium px-3 py-1.5 rounded-lg border border-border-subtle transition-all"><Download className="w-3.5 h-3.5" /><span>Export</span></button>
-          <button onClick={onOpenReleases} className="flex items-center gap-1.5 bg-accent-bg/80 hover:bg-accent-bg text-accent-text text-xs font-semibold px-3 py-1.5 rounded-lg border border-accent-border/60 transition-all shadow-xs" title="Portable Local WebUI & Releases"><Package className="w-3.5 h-3.5" /><span>Local WebUI</span></button>
+          <button onClick={onOpenReleases} className="flex items-center gap-1.5 bg-accent-bg/80 hover:bg-accent-bg text-accent-text text-xs font-semibold px-3 py-1.5 rounded-lg border border-accent-border/60 transition-all shadow-xs" title="About Labello and releases"><Package className="w-3.5 h-3.5" /><span>About</span></button>
         </div>
       </header>
 

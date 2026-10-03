@@ -2,6 +2,10 @@ node_modules/
 build/
 dist/
 coverage/
+release/*.exe
+release/*.blockmap
+release/builder-debug.yml
+release/win-unpacked/
 .DS_Store
 *.log
 .env*

@@ -1,143 +1,54 @@
-# Labello / Unified Vocal Labeling Workstation
+# Labello
 
-> An intelligent, local-first vocal and audio labeling workstation built on top of [**vLabeler**](https://github.com/sdercolin/vlabeler) by [@sdercolin](https://github.com/sdercolin), designed for high-accuracy **UTAU Auto-OTO** generation, **DiffSinger dataset** alignment, and multi-engine verification.
+Labello is a desktop vocal-dataset workstation that brings together ideas from [vLabeler](https://github.com/sdercolin/vlabeler) and [LabelMakr](https://github.com/spicytigermeat/LabelMakr). It is designed to make DiffSinger dataset preparation easier while keeping UTAU voicebank and `oto.ini` labeling as a first-class workflow.
 
-![Upstream vLabeler](https://img.shields.io/badge/Based%20on-vLabeler%20(sdercolin)-7c3aed?logo=github)
-![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-blue)
-![Processing](https://img.shields.io/badge/Processing-Local--First%20%7C%20Offline-emerald)
-![License](https://img.shields.io/badge/License-Apache--2.0-indigo)
+The application runs in its own Electron desktop window. The renderer uses React and Chromium for the waveform UI; audio selection, folder import, project files, and project-owned audio assets use native desktop file dialogs and filesystem access. It does not require users to open a browser.
 
----
+## Current workflows
 
-## Relationship to Upstream vLabeler (`sdercolin/vlabeler`)
+- **DiffSinger dataset preparation:** import an audio folder, enter a phoneme sequence for each recording, inspect and adjust suggested boundaries on the waveform, review dataset health, and export DiffSinger JSON, `.lab`, or Praat TextGrid.
+- **UTAU voicebanks:** inspect and adjust the five OTO parameters, set voicebank profiles, compare generated parameters against an existing `oto.ini`, match recordings against a reclist, and export `oto.ini` with configurable line endings and text encoding.
+- **Local project files:** save and reopen `.vbp` projects. Saving copies imported audio into a neighboring `<project>.vbp.assets` folder so the project can restore its audio after reopening.
+- **Editing:** waveform playback, spectrogram, keyboard navigation, undo/redo, review queue, and dataset health checks.
 
-This project is built upon the architectural foundations and interaction paradigms established by [**vLabeler**](https://github.com/sdercolin/vlabeler):
+### Analysis status
 
-- **Labeler Profiles (`.labeler.json`)**: Bidirectional export and import compatibility with vLabeler's modular labeler profiles for both UTAU (`oto.labeler.json`) and DiffSinger / NNSVS (`diffsinger.labeler.json`).
-- **Subproject & Multi-Entry Architecture**: Supports voicebank sample directories, singer root configurations, and multi-entry phonetic segmentation.
-- **VLabeler Ergonomic Keybindings**:
-  - `1`, `2`, `3`, `4`, `5`: Position parameter lines (Offset, Overlap, Preutterance, Fixed, Cutoff).
-  - `Enter` / `Shift+Enter`: Navigate to next / previous sample or entry.
-  - `Space`: Playback / pause selected audio segment.
-  - `Tab`: Jump to next unreviewed or low-confidence boundary.
-  - `S`: Toggle star / bookmark on entries.
-- **Extensions Introduced in Labello**:
-  - **Automated Smart Auto-OTO Engine**: Zero-crossing, acoustic energy, and formant-driven boundary generation.
-  - **Multi-Engine Consensus Alignment**: Cross-verification across SOFA, MFA, Whisper ASR, and client DSP with automated conflict detection.
-  - **Human-in-the-Loop Review Queue**: Directly isolates uncertain segments (<70% confidence).
-  - **Integrated Health Auditor**: 0–100 dataset score detecting digital clipping, impossible negative timings, and overlap collisions.
-  - **Automated Windows `.exe` CI/CD**: Packaged releases with NSIS installer and portable executables.
+The current build has a local acoustic-DSP estimator. Its outputs are starting estimates and remain marked for manual review; it does not claim multi-engine consensus. SOFA, Whisper, MFA, and online Gemini execution are **not connected** yet. Enter the expected phoneme sequence before estimating DiffSinger boundaries.
 
----
+## Run as a desktop app
 
-## Overview
-
-The **Unified Vocal Labeling Workstation** bridges the gap between traditional concatenative voicebanks and modern deep-learning singing voice synthesis:
-
-1. **UTAU Smart Auto-OTO**: Automatic acoustic parameterization (Offset, Overlap, Preutterance, Fixed, Cutoff) driven by acoustic energy analysis, zero-crossing rate, formant tracking, and voicebank profiles (Japanese CV, VCV, CVVC, English ARPAsing).
-2. **DiffSinger Dataset Labeling**: Multi-engine forced alignment and cross-verification using SOFA, MFA, Whisper ASR, and acoustic DSP to drastically reduce manual labeling time.
-
----
-
-## Core Features
-
-- **High-Performance Waveform & Spectrogram**: Canvas-accelerated peak rendering with optional real-time FFT frequency heatmap.
-- **Sub-Millisecond Boundary Editing**: Interactive draggable parameter markers and visual colored zones (VLabeler core style).
-- **Multi-Engine Verification**: Cross-engine consensus voting between SOFA, MFA, Whisper, and client DSP with automated conflict detection.
-- **Human-in-the-Loop Review Queue**: Directly isolates uncertain or conflicted segments (<70% confidence) with one-click inspection and batch acceptance.
-- **Dataset Health Checker**: Real-time 0–100 dataset health score detecting digital clipping, impossible negative timings, overlapping boundaries, and missing labels.
-- **Native Windows Compatibility**: Export UTAU `oto.ini` with standard Windows CRLF line endings, Shift-JIS or UTF-8 with BOM encodings, and DiffSinger `.ds` JSON, `.lab`, and Praat `.TextGrid` formats.
-- **Non-Destructive Editing**: Full history stack with Windows-standard shortcuts (`Ctrl+Z`, `Ctrl+Y`, `Space`, `Tab`, `A`).
-
----
-
-## Architecture & Roadmap
-
-- Detailed architecture specifications are documented in [`ARCHITECTURE.md`](./ARCHITECTURE.md).
-- Staged development milestones and phase tracking are documented in [`ROADMAP.md`](./ROADMAP.md).
-
----
-
-## Portable Local WebUI & Releases (.bat & .sh Launchers)
-
-Labello runs as a **lightweight, high-performance local Browser WebUI**. Because modern web browsers have full JavaScript, Web Audio, and hardware-accelerated Canvas built-in, Labello requires zero heavy runtimes or complex installers on your computer.
-
-### How to Run:
-
-1. **Windows**:
-   - Download `labello-portable-webui.zip`, extract it anywhere, and double-click **`start-windows.bat`**.
-   - Automatically spins up a local server using Windows built-in PowerShell (or Python if installed) and opens your default browser at `http://localhost:8080`.
-   - **Zero installation required** on any standard Windows 10 / 11 PC!
-2. **macOS & Linux**:
-   - Extract `labello-portable-webui.zip` and run **`./start-mac-linux.sh`** in terminal (or double-click).
-   - Automatically uses system Python 3 to serve the local files and opens Safari, Chrome, or Firefox.
-
----
-
-### Automated GitHub Actions Release Pipeline
-
-Every tag push or manual workflow dispatch automatically builds the static web distribution, packages the cross-platform bundle with all launcher scripts, and uploads `labello-portable-webui.zip` with SHA-256 checksums:
+Requirements: Node.js 18 or newer and npm.
 
 ```bash
-# Create and push a version tag to trigger an automated release build
-git tag -a v1.0.0 -m "Release v1.0.0"
-git push origin v1.0.0
-```
-
-You can also trigger builds manually via **GitHub &rarr; Actions &rarr; Build and Release Portable WebUI &rarr; Run workflow**.
-
-### Building the Portable WebUI Locally
-
-To compile the portable package on your local machine using Bun (or npm):
-
-```bash
-bun install
-bun run build
-```
-
-Then simply double-click `start-windows.bat` (Windows) or run `./start-mac-linux.sh` (macOS/Linux) to run locally.
-
----
-
-## Getting Started (Web / Local Development)
-
-```bash
-npm run dev
-```
-
-Open your browser to `http://localhost:3000`.
-
-### Production Build
-
-```bash
+npm ci
 npm run build
-npm start
+npm run desktop
 ```
 
----
+For development, use two terminals:
 
-## Keyboard Shortcuts (Windows Standard)
+```bash
+# Terminal 1: start the local development server
+npm run dev
 
-| Shortcut | Action |
-| :--- | :--- |
-| `Space` | Play / Pause audio playback |
-| `A` | Accept active sample/region as verified |
-| `Tab` | Jump to the next sample needing review |
-| `Ctrl + Z` | Undo boundary adjustment |
-| `Ctrl + Y` / `Ctrl + Shift + Z` | Redo boundary adjustment |
+# Terminal 2: open the desktop shell against the development server
+npm run desktop:dev
+```
 
----
+## Build Windows installers
 
-## Engine Setup (Optional Local Models)
+```bash
+npm ci
+npm run dist:win
+```
 
-The workstation operates out-of-the-box using the built-in client-side **Acoustic DSP Engine**. For multi-engine cross-verification:
+The `release` directory contains the Windows installer and Electron portable executable. `npm test` runs the project’s unit tests, and `npm run lint` runs the TypeScript check.
 
-- **SOFA**: Install [SOFA Aligner](https://github.com/qiuqiangkong/sofa) to enable deep-learning boundary alignment.
-- **Whisper**: Install `openai-whisper` or `whisper.cpp` locally.
-- **Montreal Forced Aligner (MFA)**: Available via `conda install montreal-forced-aligner`.
+## Project files and privacy
 
----
+Audio is processed locally by the current DSP estimator. Opening an audio file or folder uses the operating system’s file picker; Labello does not send audio to a service. Each `.vbp` project stores label and settings data, with source audio copied into its matching `.vbp.assets` folder on save.
 
-## License
+## Related projects
 
-Distributed under the Apache-2.0 License.
+- [vLabeler](https://github.com/sdercolin/vlabeler) — voice-label editing workflows and configurable labeler concepts.
+- [LabelMakr](https://github.com/spicytigermeat/LabelMakr) — singing-voice phoneme-label preparation for DiffSinger.

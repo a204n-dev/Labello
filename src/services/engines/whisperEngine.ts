@@ -7,7 +7,7 @@ export class WhisperEngine implements IAnalysisEngine {
   readonly name = "Whisper Phonetic ASR";
   readonly version = "v3-turbo";
   readonly isLocal = true;
-  readonly isInstalled = true;
+  readonly isInstalled = false;
   readonly defaultWeight = 0.88;
 
   async analyzeAudio(

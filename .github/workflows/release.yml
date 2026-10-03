@@ -1,4 +1,4 @@
-name: Build and Release Portable WebUI
+name: Build Native Desktop Release
 
 on:
   push:
@@ -15,94 +15,52 @@ permissions:
   contents: write
 
 jobs:
-  build-portable-webui:
-    name: Package Portable WebUI (Windows, Mac, Linux)
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-
+  build-windows:
+    name: Build Windows desktop app
+    runs-on: windows-latest
     steps:
-      - name: Checkout Repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Bun (Fast & User-Friendly Toolkit)
-        uses: oven-sh/setup-bun@v2
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          bun-version: latest
+          node-version: 22
+          cache: npm
 
-      - name: Install Dependencies
-        run: bun install
+      - name: Install dependencies
+        run: npm ci
 
-      - name: Build Web Application
-        run: bun run build
+      - name: Build installer and portable app
+        run: npm run dist:win
 
-      - name: Create Portable Bundle
+      - name: Generate checksums
+        shell: bash
         run: |
-          mkdir -p release/labello-portable-webui
-          cp -r dist release/labello-portable-webui/
-          cp start-windows.bat release/labello-portable-webui/
-          cp launcher.ps1 release/labello-portable-webui/
-          cp start-mac-linux.sh release/labello-portable-webui/
-          cp README-PORTABLE.txt release/labello-portable-webui/
-          chmod +x release/labello-portable-webui/start-mac-linux.sh
-
           cd release
-          python3 -m zipfile -c labello-portable-webui.zip labello-portable-webui
-          sha256sum labello-portable-webui.zip > checksums-sha256.txt
-          cat checksums-sha256.txt
+          sha256sum *.exe > checksums-sha256.txt
 
-      - name: Generate Release Notes
-        run: |
-          TAG="${{ github.event.inputs.version || github.ref_name }}"
-          if [ -z "$TAG" ]; then TAG="v1.0.0"; fi
-
-          cat << 'EOF' > release/release-notes.md
-          ## Labello - Vocal Labeling Workstation (Portable Local WebUI)
-          *Built on top of [vLabeler](https://github.com/sdercolin/vlabeler) by @sdercolin*
-
-          This release runs directly as a **high-performance local Browser WebUI**. No Node.js, Electron, or complicated runtimes required!
-
-          ### How to Launch:
-          - **Windows**: Download and extract `labello-portable-webui.zip`, then double-click **`start-windows.bat`**.
-            - Works immediately on any Windows 10 or 11 PC using built-in PowerShell or Python.
-            - Automatically opens your default web browser to the workstation.
-          - **macOS / Linux**: Extract `labello-portable-webui.zip`, open terminal, and run **`./start-mac-linux.sh`**.
-            - Automatically starts the local server and opens your browser.
-
-          ### Key Benefits of the WebUI Architecture:
-          - **100% Offline & Private**: All Web Audio processing, spectrogram rendering, and OTO math run inside your browser. Zero telemetry, zero cloud uploads.
-          - **Universal Compatibility**: Works identically on Windows, macOS, and Linux across Chrome, Edge, Firefox, and Safari.
-          - **Lightweight**: Zero Electron bloat; instant startup times.
-
-          ### Verification:
-          Compare with `checksums-sha256.txt` attached below.
-          EOF
-
-      - name: Upload Artifacts
-        if: always()
+      - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: labello-portable-webui
+          name: labello-windows-desktop
           path: |
-            release/labello-portable-webui.zip
+            release/*.exe
             release/checksums-sha256.txt
           retention-days: 30
 
-      - name: Publish to GitHub Releases
+      - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
         run: |
           TAG="${{ github.event.inputs.version || github.ref_name }}"
-          if [ -z "$TAG" ]; then TAG="v1.0.0"; fi
-
-          echo "Publishing release for tag: $TAG"
+          NOTES="Labello desktop release for Windows. Download the installer or portable executable and launch it directly; a browser is not required."
 
           if gh release view "$TAG" >/dev/null 2>&1; then
-            echo "Release $TAG already exists. Uploading assets..."
-            gh release upload "$TAG" release/labello-portable-webui.zip release/checksums-sha256.txt --clobber
+            gh release upload "$TAG" release/*.exe release/checksums-sha256.txt --clobber
           else
-            echo "Creating new release $TAG..."
-            gh release create "$TAG" release/labello-portable-webui.zip release/checksums-sha256.txt \
-              --title "Labello $TAG - Portable Local WebUI" \
-              --notes-file release/release-notes.md
+            gh release create "$TAG" release/*.exe release/checksums-sha256.txt \
+              --title "Labello $TAG — Native Desktop App" \
+              --notes "$NOTES"
           fi

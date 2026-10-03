@@ -22,6 +22,7 @@ interface SidebarFileListProps {
   mode: WorkstationMode;
   onSelectFile: (id: string) => void;
   onAddFiles: (newFiles: File[]) => void;
+  onRequestAddFiles?: () => void;
   onLoadDemoVoicebank: () => void;
   onLoadDemoSingingPhrase: () => void;
   onDeleteFile: (id: string) => void;
@@ -38,6 +39,7 @@ export const SidebarFileList: React.FC<SidebarFileListProps> = ({
   mode,
   onSelectFile,
   onAddFiles,
+  onRequestAddFiles,
   onLoadDemoVoicebank,
   onLoadDemoSingingPhrase,
   onDeleteFile,
@@ -186,7 +188,7 @@ export const SidebarFileList: React.FC<SidebarFileListProps> = ({
 
           <div className="flex gap-1.5">
             <input type="file" multiple accept="audio/*,.wav,.flac,.mp3,.ogg,.oga,.m4a" ref={fileInputRef} onChange={handleFileInputChange} className="hidden" />
-            <button onClick={() => fileInputRef.current?.click()} className="flex-1 flex items-center justify-center gap-1 px-2 py-1 text-[11px] bg-bg-tertiary hover:bg-bg-hover border border-border-subtle text-text-secondary rounded-lg transition-colors">
+            <button onClick={() => onRequestAddFiles ? onRequestAddFiles() : fileInputRef.current?.click()} className="flex-1 flex items-center justify-center gap-1 px-2 py-1 text-[11px] bg-bg-tertiary hover:bg-bg-hover border border-border-subtle text-text-secondary rounded-lg transition-colors">
               <Upload className="w-3 h-3 text-text-muted" />
               <span>Import Audio</span>
             </button>
