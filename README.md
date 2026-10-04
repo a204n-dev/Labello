@@ -52,3 +52,5 @@ Audio is processed locally by the current DSP estimator. Opening an audio file o
 
 - [vLabeler](https://github.com/sdercolin/vlabeler) — voice-label editing workflows and configurable labeler concepts.
 - [LabelMakr](https://github.com/spicytigermeat/LabelMakr) — singing-voice phoneme-label preparation for DiffSinger.
+
+DO NOTE THIS APP IS VIBE CODED
