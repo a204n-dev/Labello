@@ -44,14 +44,13 @@ export function compareOto(
   generated: OtoParameters,
   alias: string,
   fileName: string,
-  durationMs: number
+  durationMs: number,
+  generatedConfidence = 85
 ): OtoComparisonResult {
   const params: (keyof OtoParameters)[] = ['offsetMs', 'overlapMs', 'preutteranceMs', 'fixedMs', 'cutoffMs'];
   const changes: OtoChange[] = [];
 
   const baseConfidence = base ? 70 : 0; // base OTO assumed moderately reliable
-  const generatedConfidence = 85; // generated from analysis
-
   if (base) {
     for (const param of params) {
       const oldValue = base[param];
@@ -108,7 +107,7 @@ export function compareOto(
 export function applyOtoChanges(
   comparison: OtoComparisonResult,
   options: OtoUpdateOptions,
-  acceptedParams: Set<keyof OtoParameters> = new Set()
+  acceptedParams?: Set<keyof OtoParameters>
 ): OtoParameters {
   const { changes } = comparison;
   const mode = options.mode || comparison.mode;
@@ -124,11 +123,12 @@ export function applyOtoChanges(
         break;
       case 'update':
         // In update mode, only apply if user accepted this param
-        shouldApply = acceptedParams.has(change.param) || Boolean(options.autoAccept);
+        shouldApply = acceptedParams?.has(change.param) === true || Boolean(options.autoAccept);
         break;
       case 'hybrid':
-        // Auto-apply high-confidence changes; others need acceptance
-        shouldApply = change.confidence >= threshold || acceptedParams.has(change.param) || Boolean(options.autoAccept);
+        shouldApply = acceptedParams
+          ? acceptedParams.has(change.param) || Boolean(options.autoAccept)
+          : change.confidence >= threshold || Boolean(options.autoAccept);
         break;
     }
 
@@ -161,7 +161,8 @@ export function compareBatch(
   baseEntries: ParsedEntry[],
   generatedMap: Map<string, OtoParameters>,
   aliasMap: Map<string, string>, // fileName -> alias
-  durations: Map<string, number>
+  durations: Map<string, number>,
+  confidenceMap: Map<string, number> = new Map()
 ): OtoComparisonResult[] {
   const results: OtoComparisonResult[] = [];
 
@@ -172,7 +173,7 @@ export function compareBatch(
     const duration = durations.get(base.fileName) ?? 1000;
     const alias = aliasMap.get(base.fileName) ?? base.alias;
 
-    results.push(compareOto(base.oto, generated, alias, base.fileName, duration));
+    results.push(compareOto(base.oto, generated, alias, base.fileName, duration, confidenceMap.get(base.fileName)));
   }
 
   // Also include generated entries that have no base
@@ -180,7 +181,7 @@ export function compareBatch(
     if (!baseEntries.some(b => b.fileName === fileName)) {
       const duration = durations.get(fileName) ?? 1000;
       const alias = aliasMap.get(fileName) ?? fileName.replace(/\.[^/.]+$/, '');
-      results.push(compareOto(null, generated, alias, fileName, duration));
+      results.push(compareOto(null, generated, alias, fileName, duration, confidenceMap.get(fileName)));
     }
   }
 

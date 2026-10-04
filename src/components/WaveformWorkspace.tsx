@@ -9,6 +9,8 @@ import {
   Volume2,
   Repeat,
   Crosshair,
+  Upload,
+  FolderOpen,
 } from 'lucide-react';
 import { AudioFileItem, OtoParameters, WorkstationMode } from '../types/workstation';
 import { AudioEngine } from '../services/audio/audioEngine';
@@ -25,6 +27,8 @@ interface WaveformWorkspaceProps {
   onUpdatePhoneme: (phonemeId: string, startMs: number, endMs: number) => void;
   onSplitPhoneme?: (phonemeId: string, splitAtMs: number) => void;
   onAcceptRegion?: () => void;
+  onOpenAudio?: () => void;
+  onOpenAudioFolder?: () => void;
 }
 
 type DragTarget =
@@ -46,6 +50,8 @@ export const WaveformWorkspace: React.FC<WaveformWorkspaceProps> = ({
   onUpdateOto,
   onUpdatePhoneme,
   onAcceptRegion,
+  onOpenAudio,
+  onOpenAudioFolder,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -63,8 +69,19 @@ export const WaveformWorkspace: React.FC<WaveformWorkspaceProps> = ({
   const [selection, setSelection] = useState<{ startMs: number; endMs: number } | null>(null);
   const [loopSelection, setLoopSelection] = useState<boolean>(false);
   const [volume, setVolume] = useState<number>(0.9);
+  const [stageHeight, setStageHeight] = useState(220);
 
   const durationMs = activeFile?.durationMs || 1000;
+  const canvasHeight = Math.max(180, Math.min(560, stageHeight - 40));
+
+  useEffect(() => {
+    const stage = containerRef.current;
+    if (!stage) return;
+    const observer = new ResizeObserver(() => setStageHeight(stage.clientHeight));
+    observer.observe(stage);
+    setStageHeight(stage.clientHeight);
+    return () => observer.disconnect();
+  }, []);
 
   // ---- Engine wiring: load buffer when file changes, subscribe to ticks ----
   useEffect(() => {
@@ -223,7 +240,7 @@ export const WaveformWorkspace: React.FC<WaveformWorkspaceProps> = ({
     } catch (err) {
       console.error('Spectrogram render failed:', err);
     }
-  }, [enableSpectrogram, activeFile]);
+  }, [enableSpectrogram, activeFile, canvasHeight, zoom]);
 
   // ---- Waveform canvas ----
   useEffect(() => {
@@ -237,7 +254,7 @@ export const WaveformWorkspace: React.FC<WaveformWorkspaceProps> = ({
     ctx.clearRect(0, 0, width, height);
     const pxPerMs = width / durationMs;
     const stepMs = durationMs > 5000 ? 500 : 100;
-    ctx.strokeStyle = '#1e293b';
+    ctx.strokeStyle = '#212830';
     ctx.lineWidth = 1;
     for (let t = 0; t <= durationMs; t += stepMs) {
       const x = t * pxPerMs;
@@ -246,14 +263,14 @@ export const WaveformWorkspace: React.FC<WaveformWorkspaceProps> = ({
       ctx.lineTo(x, height);
       ctx.stroke();
     }
-    ctx.strokeStyle = '#334155';
+    ctx.strokeStyle = '#3d444d';
     ctx.beginPath();
     ctx.moveTo(0, midY);
     ctx.lineTo(width, midY);
     ctx.stroke();
     const peaks = activeFile.waveformPeaks;
     const numPoints = peaks.length / 2;
-    ctx.fillStyle = enableSpectrogram ? 'rgba(129, 140, 248, 0.65)' : '#6366f1';
+    ctx.fillStyle = enableSpectrogram ? 'rgba(68, 147, 248, 0.72)' : '#4493f8';
     ctx.beginPath();
     for (let i = 0; i < numPoints; i++) {
       const x = (i / numPoints) * width;
@@ -264,7 +281,7 @@ export const WaveformWorkspace: React.FC<WaveformWorkspaceProps> = ({
       ctx.rect(x, yTop, Math.max(1, width / numPoints), Math.max(1, yBottom - yTop));
     }
     ctx.fill();
-  }, [activeFile, durationMs, enableSpectrogram, zoom]);
+  }, [activeFile, durationMs, enableSpectrogram, zoom, canvasHeight]);
 
   // ---- ms <-> px ----
   const getCanvasWidth = () => {
@@ -367,17 +384,49 @@ export const WaveformWorkspace: React.FC<WaveformWorkspaceProps> = ({
 
   if (!activeFile) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center bg-slate-900 text-slate-500">
-        <Volume2 className="w-12 h-12 mb-3 text-slate-700" />
-        <p className="text-sm font-medium">Select or import an audio file to begin labeling</p>
-        <p className="text-xs mt-1 text-slate-600">File → Import Audio, or drag &amp; drop WAV / MP3 / FLAC / OGG</p>
+      <div className="flex-1 min-w-0 flex items-center justify-center bg-slate-900 px-6 py-10 text-slate-300">
+        <div className="w-full max-w-lg">
+          <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-md border border-blue-400/25 bg-blue-400/10 text-blue-300">
+            <Volume2 className="h-5 w-5" />
+          </div>
+          <h1 className="text-xl font-semibold tracking-tight text-slate-100">
+            {mode === 'utau' ? 'Start an oto project' : 'Start an audio-labeling project'}
+          </h1>
+          <p className="mt-2 max-w-md text-sm leading-6 text-slate-400">
+            {mode === 'utau'
+              ? 'Add voicebank recordings to estimate oto.ini timings, then inspect and refine each sample on the waveform.'
+              : 'Add audio recordings to create and review phoneme timing labels.'}
+          </p>
+          <div className="mt-6 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={onOpenAudio}
+              className={`inline-flex h-9 items-center gap-2 rounded-md px-3.5 text-sm font-medium transition-colors hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 ${
+                mode === 'utau'
+                  ? 'bg-mode-utau text-text-inverse focus-visible:ring-mode-utau'
+                  : 'bg-mode-diffsinger text-white focus-visible:ring-mode-diffsinger'
+              }`}
+            >
+              <Upload className="h-4 w-4" />
+              Add audio files
+            </button>
+            <button
+              type="button"
+              onClick={onOpenAudioFolder}
+              className="inline-flex h-9 items-center gap-2 rounded-md border border-border-default bg-bg-tertiary px-3.5 text-sm font-medium text-text-primary transition-colors hover:border-border-strong hover:bg-bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
+            >
+              <FolderOpen className="h-4 w-4" />
+              Open audio folder
+            </button>
+          </div>
+          <p className="mt-4 text-xs text-slate-500">WAV, FLAC, MP3 and OGG audio supported</p>
+        </div>
       </div>
     );
   }
 
   const oto = activeFile.oto;
   const canvasWidth = getCanvasWidth();
-  const canvasHeight = enableSpectrogram ? 220 : 160;
   const offsetPx = oto ? msToPx(oto.offsetMs) : 0;
   const overlapPx = oto ? msToPx(oto.offsetMs + oto.overlapMs) : 0;
   const preutPx = oto ? msToPx(oto.offsetMs + oto.preutteranceMs) : 0;
@@ -394,9 +443,9 @@ export const WaveformWorkspace: React.FC<WaveformWorkspaceProps> = ({
       : null;
 
   return (
-    <div className="flex-1 flex flex-col h-[calc(100vh-3.5rem)] bg-slate-900 overflow-hidden select-none">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-bg-secondary overflow-hidden select-none">
       {/* Selection info bar */}
-      <div className="h-8 bg-slate-950 border-b border-slate-800 px-3 flex items-center gap-3 text-[11px] font-mono text-slate-400">
+      <div className="h-8 shrink-0 overflow-x-auto bg-bg-secondary border-b border-border-subtle px-3 flex items-center gap-3 text-[11px] font-mono text-text-secondary">
         <span className="flex items-center gap-1 text-slate-500">
           <Crosshair className="w-3 h-3" /> Selection
         </span>
@@ -404,21 +453,31 @@ export const WaveformWorkspace: React.FC<WaveformWorkspaceProps> = ({
           <>
             <span>Start <span className="text-slate-200">{formatTimecode(selection.startMs)}</span></span>
             <span>End <span className="text-slate-200">{formatTimecode(selection.endMs)}</span></span>
-            <span>Duration <span className="text-indigo-300">{formatTimecode(selection.endMs - selection.startMs)}</span></span>
-            <button onClick={handlePlaySelection} className="ml-1 px-2 py-0.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-[11px] font-sans font-semibold" title="Play selected region">
+            <span>Duration <span className="text-accent-text">{formatTimecode(selection.endMs - selection.startMs)}</span></span>
+            <button onClick={handlePlaySelection} className="ml-1 px-2 py-0.5 bg-accent-bg hover:brightness-110 text-accent-text rounded-md text-[11px] font-sans font-semibold" title="Play selected region">
               Play Selection
             </button>
-            <button onClick={handleZoomToSelection} className="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-[11px] font-sans" title="Zoom to selection">
+            <button onClick={handleZoomToSelection} className="px-2 py-0.5 bg-bg-tertiary hover:bg-bg-hover text-text-primary rounded-md text-[11px] font-sans" title="Zoom to selection">
               Zoom to Selection
             </button>
             <label className="flex items-center gap-1 cursor-pointer font-sans" title="Loop the selected region">
-              <input type="checkbox" checked={loopSelection} onChange={(e) => setLoopSelection(e.target.checked)} className="accent-indigo-500" />
+              <input type="checkbox" checked={loopSelection} onChange={(e) => setLoopSelection(e.target.checked)} className="accent-mode-utau" />
               <Repeat className="w-3 h-3" /> Loop
             </label>
             <button onClick={() => setSelection(null)} className="text-slate-500 hover:text-slate-300 font-sans">Clear</button>
           </>
         ) : (
-          <span className="text-slate-600">Drag on the waveform to select a region • Click to move the playhead</span>
+          mode === 'utau' && oto ? (
+            <div className="flex items-center gap-3 overflow-hidden whitespace-nowrap text-[10px]">
+              <span className="text-blue-400">Offset <b className="text-slate-200">{oto.offsetMs} ms</b></span>
+              <span className="text-emerald-400">Overlap <b className="text-slate-200">{oto.overlapMs} ms</b></span>
+              <span className="text-rose-400">Preutterance <b className="text-slate-200">{oto.preutteranceMs} ms</b></span>
+              <span className="text-pink-400">Fixed <b className="text-slate-200">{oto.fixedMs} ms</b></span>
+              <span className="text-indigo-400">Cutoff <b className="text-slate-200">{oto.cutoffMs} ms</b></span>
+            </div>
+          ) : (
+            <span className="text-slate-600">Drag on the waveform to select a region • Click to move the playhead</span>
+          )
         )}
       </div>
 
@@ -426,21 +485,21 @@ export const WaveformWorkspace: React.FC<WaveformWorkspaceProps> = ({
       <div
         ref={containerRef}
         id="waveform-stage-container"
-        className="flex-1 overflow-x-auto overflow-y-hidden relative bg-slate-950 cursor-crosshair"
+        className="min-h-0 min-w-0 flex-1 overflow-x-auto overflow-y-hidden relative bg-bg-primary cursor-crosshair"
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={() => { handleMouseUp(); setHoverTimeMs(null); }}
       >
         <div style={{ width: `${canvasWidth}px`, height: '100%', position: 'relative' }}>
-          <div className="h-6 w-full border-b border-slate-800 bg-slate-900/90 flex items-center text-[10px] font-mono text-slate-500 px-2 pointer-events-none sticky top-0 z-20">
+          <div className="h-6 w-full border-b border-border-subtle bg-bg-secondary flex items-center text-[10px] font-mono text-text-muted px-2 pointer-events-none sticky top-0 z-20">
             {Array.from({ length: Math.ceil(durationMs / 200) + 1 }).map((_, i) => {
               const ms = i * 200;
               const x = msToPx(ms);
               return (
                 <div key={i} className="absolute" style={{ left: `${x}px` }}>
-                  <div className="h-2 w-[1px] bg-slate-700 -mt-1" />
-                  <span className="ml-1 text-[9px] text-slate-400">{(ms / 1000).toFixed(2)}s</span>
+                  <div className="h-2 w-[1px] bg-border-default -mt-1" />
+                  <span className="ml-1 text-[9px] text-text-secondary">{(ms / 1000).toFixed(2)}s</span>
                 </div>
               );
             })}
@@ -454,7 +513,7 @@ export const WaveformWorkspace: React.FC<WaveformWorkspaceProps> = ({
 
             {/* Selection overlay */}
             {selPx && (
-              <div className="absolute top-0 bottom-0 bg-indigo-500/20 border-x border-indigo-400/70 pointer-events-none z-10" style={{ left: `${selPx.left}px`, width: `${selPx.width}px` }} />
+              <div className="absolute top-0 bottom-0 bg-blue-500/20 border-x border-blue-400/70 pointer-events-none z-10" style={{ left: `${selPx.left}px`, width: `${selPx.width}px` }} />
             )}
 
             {mode === 'utau' && oto && (
@@ -464,21 +523,11 @@ export const WaveformWorkspace: React.FC<WaveformWorkspaceProps> = ({
                 <div className="absolute top-0 bottom-0 bg-rose-500/10 pointer-events-none" style={{ left: `${overlapPx}px`, width: `${Math.max(0, preutPx - overlapPx)}px` }} />
                 <div className="absolute top-0 bottom-0 bg-pink-500/15 pointer-events-none" style={{ left: `${preutPx}px`, width: `${Math.max(0, fixedPx - preutPx)}px` }} />
                 <div className="absolute top-0 bottom-0 right-0 bg-black/60 pointer-events-none" style={{ left: `${cutoffPx}px` }} />
-                <div className="absolute top-0 bottom-0 w-[2px] bg-blue-500 cursor-ew-resize z-10" style={{ left: `${offsetPx}px` }}>
-                  <div className="absolute top-1 -left-2 bg-blue-600 text-[10px] font-mono px-1 rounded text-white shadow">Offset ({oto.offsetMs}ms)</div>
-                </div>
-                <div className="absolute top-0 bottom-0 w-[2px] bg-emerald-400 cursor-ew-resize z-10" style={{ left: `${overlapPx}px` }}>
-                  <div className="absolute top-6 -left-2 bg-emerald-600 text-[10px] font-mono px-1 rounded text-white shadow">Overlap (+{oto.overlapMs}ms)</div>
-                </div>
-                <div className="absolute top-0 bottom-0 w-[2px] bg-rose-500 cursor-ew-resize z-10" style={{ left: `${preutPx}px` }}>
-                  <div className="absolute top-11 -left-2 bg-rose-600 text-[10px] font-mono px-1 rounded text-white shadow font-bold">Preut (+{oto.preutteranceMs}ms)</div>
-                </div>
-                <div className="absolute top-0 bottom-0 w-[2px] bg-pink-500 cursor-ew-resize z-10" style={{ left: `${fixedPx}px` }}>
-                  <div className="absolute top-16 -left-2 bg-pink-600 text-[10px] font-mono px-1 rounded text-white shadow">Fixed (+{oto.fixedMs}ms)</div>
-                </div>
-                <div className="absolute top-0 bottom-0 w-[2px] bg-indigo-400 cursor-ew-resize z-10" style={{ left: `${cutoffPx}px` }}>
-                  <div className="absolute top-1 -right-2 bg-indigo-600 text-[10px] font-mono px-1 rounded text-white shadow">Cutoff ({oto.cutoffMs}ms)</div>
-                </div>
+                <div title={`Offset: ${oto.offsetMs} ms — drag to adjust`} aria-label={`OTO offset ${oto.offsetMs} milliseconds`} className="absolute top-0 bottom-0 w-[2px] bg-blue-500 cursor-ew-resize z-10" style={{ left: `${offsetPx}px` }} />
+                <div title={`Overlap: ${oto.overlapMs} ms — drag to adjust`} aria-label={`OTO overlap ${oto.overlapMs} milliseconds`} className="absolute top-0 bottom-0 w-[2px] bg-emerald-400 cursor-ew-resize z-10" style={{ left: `${overlapPx}px` }} />
+                <div title={`Preutterance: ${oto.preutteranceMs} ms — drag to adjust`} aria-label={`OTO preutterance ${oto.preutteranceMs} milliseconds`} className="absolute top-0 bottom-0 w-[2px] bg-rose-500 cursor-ew-resize z-10" style={{ left: `${preutPx}px` }} />
+                <div title={`Fixed consonant: ${oto.fixedMs} ms — drag to adjust`} aria-label={`OTO fixed consonant ${oto.fixedMs} milliseconds`} className="absolute top-0 bottom-0 w-[2px] bg-pink-500 cursor-ew-resize z-10" style={{ left: `${fixedPx}px` }} />
+                <div title={`Cutoff: ${oto.cutoffMs} ms — drag to adjust`} aria-label={`OTO cutoff ${oto.cutoffMs} milliseconds`} className="absolute top-0 bottom-0 w-[2px] bg-indigo-400 cursor-ew-resize z-10" style={{ left: `${cutoffPx}px` }} />
               </>
             )}
 
@@ -496,7 +545,7 @@ export const WaveformWorkspace: React.FC<WaveformWorkspaceProps> = ({
                       key={p.id}
                       onClick={() => onSelectPhoneme(p.id)}
                       className={`absolute top-0 bottom-0 pointer-events-auto border-r border-slate-700 cursor-pointer transition-colors ${
-                        isSelected ? 'bg-indigo-600/25 border-indigo-400' : isHigh ? 'bg-emerald-500/10 hover:bg-emerald-500/20' : isMedium ? 'bg-amber-500/10 hover:bg-amber-500/20' : 'bg-rose-500/15 hover:bg-rose-500/25'
+                        isSelected ? 'bg-blue-600/25 border-blue-400' : isHigh ? 'bg-emerald-500/10 hover:bg-emerald-500/20' : isMedium ? 'bg-amber-500/10 hover:bg-amber-500/20' : 'bg-rose-500/15 hover:bg-rose-500/25'
                       }`}
                       style={{ left: `${startX}px`, width: `${widthPx}px` }}
                     >
@@ -530,7 +579,7 @@ export const WaveformWorkspace: React.FC<WaveformWorkspaceProps> = ({
       {/* Transport */}
       <div className="h-[var(--toolbar-height)] bg-bg-secondary border-t border-border-subtle px-4 flex items-center justify-between text-text-secondary flex-wrap gap-2">
         <div className="flex items-center gap-2 flex-1 min-w-0">
-          <button id="play-btn" onClick={handlePlay} disabled={isPlaying} className="flex items-center gap-1.5 px-3 py-1.5 bg-mode-utau hover:bg-mode-utau/90 disabled:opacity-40 text-white rounded-md text-xs font-semibold shadow-sm transition-all" title="Play from cursor (Space)">
+          <button id="play-btn" onClick={handlePlay} disabled={isPlaying} className={`flex items-center gap-1.5 px-3 py-1.5 disabled:opacity-40 rounded-md text-xs font-semibold shadow-sm transition-all hover:brightness-110 ${mode === 'utau' ? 'bg-mode-utau text-text-inverse' : 'bg-mode-diffsinger text-white'}`} title="Play from cursor (Space)">
             <Play className="w-3.5 h-3.5" /><span className="hidden sm:inline">Play</span>
           </button>
           <button id="pause-btn" onClick={handlePause} disabled={!isPlaying} className="flex items-center gap-1.5 px-3 py-1.5 bg-bg-tertiary hover:bg-bg-hover disabled:opacity-40 text-text-secondary rounded-md text-xs font-semibold transition-all" title="Pause (Space)">
@@ -545,7 +594,7 @@ export const WaveformWorkspace: React.FC<WaveformWorkspaceProps> = ({
           </div>
           <div className="hidden md:flex items-center gap-1.5 text-xs text-text-muted" title="Volume">
             <Volume2 className="w-3.5 h-3.5" />
-            <input id="volume-slider" type="range" min={0} max={1} step={0.01} value={volume} onChange={(e) => setVolume(Number(e.target.value))} className="w-20 accent-mode-utau" />
+            <input id="volume-slider" type="range" min={0} max={1} step={0.01} value={volume} onChange={(e) => setVolume(Number(e.target.value))} className={`w-20 ${mode === 'utau' ? 'accent-mode-utau' : 'accent-mode-diffsinger'}`} />
           </div>
         </div>
 

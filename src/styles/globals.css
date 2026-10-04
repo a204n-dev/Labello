@@ -3,40 +3,69 @@
 /* Design tokens as CSS custom properties */
 :root {
   /* Colors */
-  --bg-primary: #020617;
-  --bg-secondary: #0f172a;
-  --bg-tertiary: #1e293b;
-  --bg-elevated: #334155;
-  --bg-hover: #475569;
+  --bgColor-default: #0d1117;
+  --bgColor-inset: #010409;
+  --bgColor-muted: #151b23;
+  --bgColor-emphasis: #3d444d;
+  --bgColor-hover: #212830;
+  --bgColor-accent-emphasis: #1f6feb;
+  --bgColor-success-muted: #12261e;
+  --bgColor-attention-muted: #272115;
+  --bgColor-danger-muted: #2d1418;
+  --bgColor-done-muted: #211a2e;
 
-  --border-subtle: #1e293b;
-  --border-default: #334155;
-  --border-strong: #475569;
-  --border-focus: #6366f1;
+  --fgColor-default: #f0f6fc;
+  --fgColor-muted: #9198a1;
+  --fgColor-subtle: #656c76;
+  --fgColor-onEmphasis: #ffffff;
+  --fgColor-accent: #4493f8;
+  --fgColor-success: #3fb950;
+  --fgColor-attention: #d29922;
+  --fgColor-danger: #f85149;
+  --fgColor-done: #a371f7;
 
-  --text-primary: #f1f5f9;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
-  --text-inverse: #0f172a;
+  --borderColor-default: #3d444d;
+  --borderColor-muted: #3d444d66;
+  --borderColor-emphasis: #656c76;
+  --borderColor-accent-emphasis: #1f6feb;
+  --borderColor-success: #238636;
+  --borderColor-attention: #9e6a03;
+  --borderColor-danger: #da3633;
 
-  --state-success-bg: #064e3b;
-  --state-success-text: #34d399;
-  --state-success-border: #065f46;
-  --state-warning-bg: #78350f;
-  --state-warning-text: #fbbf24;
-  --state-warning-border: #92400e;
-  --state-error-bg: #7f1d1d;
-  --state-error-text: #f87171;
-  --state-error-border: #991b1b;
-  --state-info-bg: #1e3a8a;
-  --state-info-text: #60a5fa;
-  --state-info-border: #1e40af;
-  --state-accent-bg: #312e81;
-  --state-accent-text: #a5b4fc;
-  --state-accent-border: #3730a3;
+  --bg-primary: var(--bgColor-default);
+  --bg-secondary: var(--bgColor-inset);
+  --bg-tertiary: var(--bgColor-muted);
+  --bg-elevated: var(--bgColor-emphasis);
+  --bg-hover: var(--bgColor-hover);
 
-  --mode-utau: #6366f1;
-  --mode-diffsinger: #ec4899;
+  --border-subtle: var(--borderColor-muted);
+  --border-default: var(--borderColor-default);
+  --border-strong: var(--borderColor-emphasis);
+  --border-focus: var(--fgColor-accent);
+
+  --text-primary: var(--fgColor-default);
+  --text-secondary: #c9d1d9;
+  --text-muted: var(--fgColor-muted);
+  --text-inverse: #ffffff;
+
+  --state-success-bg: var(--bgColor-success-muted);
+  --state-success-text: var(--fgColor-success);
+  --state-success-border: var(--borderColor-success);
+  --state-warning-bg: var(--bgColor-attention-muted);
+  --state-warning-text: var(--fgColor-attention);
+  --state-warning-border: var(--borderColor-attention);
+  --state-error-bg: var(--bgColor-danger-muted);
+  --state-error-text: var(--fgColor-danger);
+  --state-error-border: var(--borderColor-danger);
+  --state-info-bg: #111d2f;
+  --state-info-text: var(--fgColor-accent);
+  --state-info-border: var(--borderColor-accent-emphasis);
+  --state-accent-bg: var(--bgColor-done-muted);
+  --state-accent-text: var(--fgColor-done);
+  --state-accent-border: #6e40c9;
+
+  --mode-utau: var(--fgColor-accent);
+  --mode-diffsinger: var(--fgColor-accent);
 
   /* Spacing */
   --space-1: 0.125rem;
@@ -51,14 +80,14 @@
   --space-16: 2rem;
 
   /* Typography */
-  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-sans: "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
 
-  --text-xs: 0.6875rem;
-  --text-sm: 0.75rem;
-  --text-base: 0.8125rem;
-  --text-lg: 0.875rem;
-  --text-xl: 1rem;
+  --text-xs: 0.75rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.875rem;
+  --text-lg: 1rem;
+  --text-xl: 1.25rem;
 
   --font-normal: 400;
   --font-medium: 500;
@@ -73,8 +102,8 @@
   --radius-none: 0;
   --radius-sm: 0.25rem;
   --radius-md: 0.375rem;
-  --radius-lg: 0.5rem;
-  --radius-xl: 0.75rem;
+  --radius-lg: 0.375rem;
+  --radius-xl: 0.5rem;
   --radius-full: 9999px;
 
   /* Shadows */
@@ -112,9 +141,9 @@
   --props-default: 320px;
 
   /* Component sizing */
-  --header-height: 3.5rem;
-  --header-height-mobile: 3rem;
-  --toolbar-height: 3rem;
+  --header-height: 3rem;
+  --header-height-mobile: 2.75rem;
+  --toolbar-height: 2.5rem;
   --status-height: 1.5rem;
 
   --icon-sm: 1rem;
@@ -131,6 +160,45 @@
 
 /* Tailwind v4 theme configuration */
 @theme {
+  --color-slate-950: var(--bg-primary);
+  --color-slate-900: var(--bg-secondary);
+  --color-slate-800: var(--bg-tertiary);
+  --color-slate-700: var(--border-default);
+  --color-slate-600: var(--border-strong);
+  --color-slate-500: var(--text-muted);
+  --color-slate-400: var(--text-secondary);
+  --color-slate-300: var(--text-secondary);
+  --color-slate-200: var(--text-primary);
+  --color-slate-100: var(--text-primary);
+  --color-indigo-300: #d2a8ff;
+  --color-indigo-400: #bc8cff;
+  --color-indigo-500: var(--fgColor-done);
+  --color-indigo-600: #8957e5;
+  --color-indigo-700: #6e40c9;
+  --color-blue-300: var(--fgColor-accent);
+  --color-blue-400: var(--fgColor-accent);
+  --color-blue-500: var(--bgColor-accent-emphasis);
+  --color-emerald-300: var(--fgColor-success);
+  --color-emerald-400: var(--fgColor-success);
+  --color-emerald-500: var(--fgColor-success);
+  --color-emerald-800: var(--borderColor-success);
+  --color-emerald-950: var(--bgColor-success-muted);
+  --color-green-400: var(--fgColor-success);
+  --color-amber-300: var(--fgColor-attention);
+  --color-amber-400: var(--fgColor-attention);
+  --color-amber-500: var(--fgColor-attention);
+  --color-amber-800: var(--borderColor-attention);
+  --color-amber-900: #6b4e16;
+  --color-amber-950: var(--bgColor-attention-muted);
+  --color-rose-300: var(--fgColor-danger);
+  --color-rose-400: var(--fgColor-danger);
+  --color-rose-500: var(--fgColor-danger);
+  --color-rose-800: var(--borderColor-danger);
+  --color-rose-950: var(--bgColor-danger-muted);
+  --color-pink-300: #f778ba;
+  --color-pink-400: #f778ba;
+  --color-pink-500: #db61a2;
+  --color-pink-950: #2d1423;
   --color-bg-primary: var(--bg-primary);
   --color-bg-secondary: var(--bg-secondary);
   --color-bg-tertiary: var(--bg-tertiary);
@@ -218,11 +286,11 @@
   --z-tooltip: var(--z-tooltip);
   --z-toast: var(--z-toast);
 
-  --breakpoint-sm: var(--bp-sm);
-  --breakpoint-md: var(--bp-md);
-  --breakpoint-lg: var(--bp-lg);
-  --breakpoint-xl: var(--bp-xl);
-  --breakpoint-2xl: var(--bp-2xl);
+  --breakpoint-sm: 40rem;
+  --breakpoint-md: 48rem;
+  --breakpoint-lg: 64rem;
+  --breakpoint-xl: 80rem;
+  --breakpoint-2xl: 96rem;
 
   --header-height: var(--header-height);
   --header-height-mobile: var(--header-height-mobile);
@@ -243,6 +311,20 @@
   box-sizing: border-box;
 }
 
+@media (max-width: 1024px) {
+  #recordings-panel {
+    width: clamp(200px, 24vw, 240px) !important;
+    min-width: 200px !important;
+    max-width: 240px !important;
+  }
+
+  #properties-panel {
+    width: clamp(240px, 26vw, 280px) !important;
+    min-width: 240px !important;
+    max-width: 280px !important;
+  }
+}
+
 html, body, #root {
   height: 100%;
   margin: 0;
@@ -259,37 +341,59 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Selection */
-::selection {
-  background-color: var(--state-accent-bg);
-  color: var(--state-accent-text);
-}
-
-/* Scrollbar */
+/* Scrollbars */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
 }
 ::-webkit-scrollbar-track {
-  background: var(--bg-secondary);
+  background: var(--bg-primary);
 }
 ::-webkit-scrollbar-thumb {
   background: var(--bg-elevated);
-  border-radius: var(--radius-full);
+  border: 2px solid var(--bg-primary);
+  border-radius: var(--radius-md);
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--bg-hover);
+  background: var(--border-strong);
 }
 ::-webkit-scrollbar-corner {
-  background: var(--bg-secondary);
+  background: var(--bg-primary);
 }
 
 /* Focus visible */
 :focus-visible {
-  outline: none;
-  ring: 2px solid var(--border-focus);
-  ring-offset: 2px;
-  ring-offset-color: var(--bg-primary);
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+select,
+textarea {
+  min-height: 32px;
+  color: var(--text-primary);
+  border-color: var(--border-default);
+}
+
+input[type="checkbox"],
+input[type="radio"],
+input[type="range"] {
+  accent-color: var(--fgColor-accent);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-muted);
+  opacity: 1;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+::selection {
+  background: rgb(68 147 248 / 32%);
+  color: var(--text-primary);
 }
 
 /* Reduced motion */

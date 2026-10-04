@@ -5,6 +5,7 @@
  */
 
 import { AudioFileItem, ParsedOtoEntry } from '../../types/workstation';
+import { romajiToHiragana } from '../oto/japaneseKana';
 
 export type ReclistFormat = 'standard' | 'prefixed' | 'suffixed' | 'oto_based' | 'custom';
 
@@ -151,7 +152,18 @@ export function generateCandidates(alias: string, prefix = '', suffix = ''): str
   const spaced = base.replace(/_/g, ' ');
   if (spaced !== base) for (const ext of exts) candidates.push(`${spaced}${ext}`);
 
+  const kana = romajiToHiragana(base);
+  if (kana !== base) {
+    for (const ext of exts) candidates.push(`${kana}${ext}`);
+    if (prefix) for (const ext of exts) candidates.push(`${prefix}_${kana}${ext}`);
+    if (suffix) for (const ext of exts) candidates.push(`${kana}_${suffix}${ext}`);
+  }
+
   return [...new Set(candidates)]; // dedupe
+}
+
+function canonicalAlias(value: string): string {
+  return romajiToHiragana(value).toLowerCase().replace(/[_\-\s]/g, '');
 }
 
 /** Fuzzy match score (0-100) between two strings. */
@@ -163,6 +175,10 @@ export function fuzzyScore(a: string, b: string): number {
   const sa = la.replace(/[_\-\s]/g, '');
   const sb = lb.replace(/[_\-\s]/g, '');
   if (sa === sb) return 85;
+  const kanaA = canonicalAlias(a);
+  const kanaB = canonicalAlias(b);
+  if (kanaA === kanaB) return 98;
+  if (kanaA.includes(kanaB) || kanaB.includes(kanaA)) return 80;
   if (sa.includes(sb) || sb.includes(sa)) return 80;
 
   // Levenshtein distance normalized
@@ -193,14 +209,15 @@ export function matchAll(
 
   // Build lookup maps
   const audioByName = new Map(audioFiles.map(f => [f.name.toLowerCase(), f]));
-  const audioByAlias = new Map(audioFiles.map(f => [(f.alias || f.name.replace(/\.[^/.]+$/, '')).toLowerCase(), f]));
+  const audioByAlias = new Map(audioFiles.map(f => [canonicalAlias(f.alias || f.name.replace(/\.[^/.]+$/, '')), f]));
   const otoByFile = new Map(otoEntries.map(e => [e.fileName.toLowerCase(), e]));
-  const otoByAlias = new Map(otoEntries.map(e => [e.alias.toLowerCase(), e]));
+  const otoByAlias = new Map(otoEntries.map(e => [canonicalAlias(e.alias), e]));
 
   // 1. For each reclist entry, try to find WAV + OTO
   for (const r of reclistEntries) {
     const candidates = generateCandidates(r.alias, prefix, suffix);
     const expected = r.expectedFileName?.toLowerCase();
+    const canonicalReclistAlias = canonicalAlias(r.alias);
 
     let match: 'exact' | 'fuzzy' | 'missing_wav' | 'missing_reclist' | 'missing_oto' | 'duplicate' = 'missing_wav';
     let confidence = 0;
@@ -234,7 +251,13 @@ export function matchAll(
     // Fuzzy match by alias
     if (!audioFile) {
       for (const [key, af] of audioByAlias) {
-        const score = fuzzyScore(key, r.alias.toLowerCase());
+        if (key === canonicalReclistAlias) {
+          audioFile = af;
+          match = 'exact';
+          confidence = 100;
+          break;
+        }
+        const score = fuzzyScore(key, r.alias);
         if (score >= fuzzyThreshold && (!audioFile || score > confidence)) {
           audioFile = af;
           match = 'fuzzy';
@@ -246,7 +269,7 @@ export function matchAll(
     // Match OTO
     if (audioFile) {
       const otoKey = audioFile.name.toLowerCase();
-      otoEntry = otoByFile.get(otoKey) || otoByAlias.get((audioFile.alias || '').toLowerCase());
+      otoEntry = otoByFile.get(otoKey) || otoByAlias.get(canonicalAlias(audioFile.alias || ''));
       if (!otoEntry) {
         issues.push('No base OTO entry found for this recording');
         match = match === 'exact' ? 'missing_oto' : match;
@@ -256,7 +279,7 @@ export function matchAll(
     }
 
     // Check for duplicates
-    const dupCount = audioFiles.filter(af => (af.alias || af.name.replace(/\.[^/.]+$/, '')).toLowerCase() === r.alias.toLowerCase()).length;
+    const dupCount = audioFiles.filter(af => canonicalAlias(af.alias || af.name.replace(/\.[^/.]+$/, '')) === canonicalReclistAlias).length;
     if (dupCount > 1) {
       issues.push(`${dupCount} recordings share this alias`);
       match = 'duplicate';
@@ -275,9 +298,9 @@ export function matchAll(
   }
 
   // 2. Find WAV files not in reclist
-  const matchedAliases = new Set(results.map(r => r.alias.toLowerCase()));
+  const matchedAliases = new Set(results.map(r => canonicalAlias(r.alias)));
   for (const af of audioFiles) {
-    const aliasKey = (af.alias || af.name.replace(/\.[^/.]+$/, '')).toLowerCase();
+    const aliasKey = canonicalAlias(af.alias || af.name.replace(/\.[^/.]+$/, ''));
     if (!matchedAliases.has(aliasKey)) {
       const otoEntry = otoByFile.get(af.name.toLowerCase()) || otoByAlias.get(aliasKey);
       results.push({

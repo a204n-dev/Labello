@@ -4,7 +4,7 @@ export const VOICEBANK_PROFILES: VoicebankProfile[] = [
   {
     id: 'japanese_cv',
     name: 'Japanese CV (Standard)',
-    description: 'Consonant-Vowel standard Japanese voicebank recording style (e.g. ka, ki, ku, ke, ko).',
+    description: 'Standard Japanese consonant-vowel recording style (e.g. ka, ki, ku, ke, ko).',
     language: 'Japanese',
     recordingStyle: 'CV',
     sampleStructure: '[consonant][vowel].wav',
@@ -24,8 +24,8 @@ export const VOICEBANK_PROFILES: VoicebankProfile[] = [
   },
   {
     id: 'japanese_vcv',
-    name: 'Japanese VCV (Ren continuous)',
-    description: 'Vowel-Consonant-Vowel continuous 7-mora or 5-mora strings (e.g. - ka, a ka, i ka).',
+    name: 'Japanese VCV (Continuous)',
+    description: 'Japanese vowel-consonant-vowel continuous recordings (e.g. - ka, a ka, i ka).',
     language: 'Japanese',
     recordingStyle: 'VCV',
     sampleStructure: '[vowel] [consonant][vowel]',
@@ -35,12 +35,22 @@ export const VOICEBANK_PROFILES: VoicebankProfile[] = [
   {
     id: 'japanese_cvvc',
     name: 'Japanese CVVC',
-    description: 'Separated Consonant-Vowel and Vowel-Consonant diphones for flexible synthesis.',
+    description: 'Japanese consonant-vowel and vowel-consonant transitions (e.g. ka, a k).',
     language: 'Japanese',
     recordingStyle: 'CVVC',
     sampleStructure: '[consonant][vowel] and [vowel] [consonant]',
     defaultOverlapRatio: 0.30,
-    expectedPhonemes: ['ka', 'ak', 'sa', 'as', 'ta', 'at'],
+    expectedPhonemes: ['ka', 'ki', 'ku', 'ke', 'ko', 'a k', 'i k', 'u k', 'a s', 'i s', 'a t', 'i t'],
+  },
+  {
+    id: 'japanese_custom',
+    name: 'Japanese custom format',
+    description: 'A Japanese reclist that does not follow standard CV, CVVC, or VCV. Timing defaults are generic.',
+    language: 'Japanese',
+    recordingStyle: 'Other',
+    sampleStructure: 'Custom Japanese aliases',
+    defaultOverlapRatio: 0.35,
+    expectedPhonemes: [],
   },
   {
     id: 'english_arpasing',
@@ -52,7 +62,71 @@ export const VOICEBANK_PROFILES: VoicebankProfile[] = [
     defaultOverlapRatio: 0.33,
     expectedPhonemes: ['- k', 'k ae', 'ae t', 't -', '- s', 's ey', 'ey v'],
   },
+  {
+    id: 'english_custom',
+    name: 'English custom format',
+    description: 'A custom English reclist outside ARPAsing. No phoneme transcription is performed.',
+    language: 'English',
+    recordingStyle: 'Other',
+    sampleStructure: 'Custom English aliases',
+    defaultOverlapRatio: 0.35,
+    expectedPhonemes: [],
+  },
+  {
+    id: 'chinese_cv',
+    name: 'Chinese CV',
+    description: 'Consonant-vowel recordings. This profile does not perform Mandarin phoneme recognition or tone labeling.',
+    language: 'Chinese',
+    recordingStyle: 'CV',
+    sampleStructure: '[consonant][vowel].wav',
+    defaultOverlapRatio: 0.35,
+    expectedPhonemes: [],
+  },
+  {
+    id: 'chinese_vcv',
+    name: 'Chinese VCV',
+    description: 'Continuous vowel-consonant-vowel recordings. This profile does not perform Mandarin phoneme recognition or tone labeling.',
+    language: 'Chinese',
+    recordingStyle: 'VCV',
+    sampleStructure: '[vowel] [consonant][vowel]',
+    defaultOverlapRatio: 0.45,
+    expectedPhonemes: [],
+  },
+  {
+    id: 'chinese_cvvc',
+    name: 'Chinese CVVC',
+    description: 'Consonant-vowel recordings and vowel-consonant transitions. This profile does not perform Mandarin phoneme recognition or tone labeling.',
+    language: 'Chinese',
+    recordingStyle: 'CVVC',
+    sampleStructure: '[consonant][vowel] and [vowel] [consonant]',
+    defaultOverlapRatio: 0.30,
+    expectedPhonemes: [],
+  },
+  {
+    id: 'chinese_custom',
+    name: 'Chinese custom format',
+    description: 'A custom Chinese reclist. Timing defaults are generic; phoneme recognition and tone labeling are not performed.',
+    language: 'Chinese',
+    recordingStyle: 'Other',
+    sampleStructure: 'Custom Chinese aliases',
+    defaultOverlapRatio: 0.35,
+    expectedPhonemes: [],
+  },
+  {
+    id: 'custom',
+    name: 'Other / custom format',
+    description: 'Use your own filenames and aliases. No language-specific alias conversion is applied.',
+    language: 'Other',
+    recordingStyle: 'Other',
+    sampleStructure: 'Custom',
+    defaultOverlapRatio: 0.35,
+    expectedPhonemes: [],
+  },
 ];
+
+export const JAPANESE_VOICEBANK_PROFILES = VOICEBANK_PROFILES.filter(
+  profile => profile.language === 'Japanese'
+);
 
 export function getProfileById(id: string): VoicebankProfile {
   return VOICEBANK_PROFILES.find(p => p.id === id) || VOICEBANK_PROFILES[0];

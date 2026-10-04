@@ -32,10 +32,9 @@ export const ImportOtoModal: React.FC<ImportOtoModalProps> = ({
   const [comparisons, setComparisons] = useState<OtoComparisonResult[]>([]);
   const [errors, setErrors] = useState<string[]>([]);
   const [warnings, setWarnings] = useState<string[]>([]);
-  const [encoding, setEncoding] = useState<'UTF-8' | 'Shift-JIS' | 'UTF-8-BOM'>('Shift-JIS');
   const [mode, setMode] = useState<'update' | 'hybrid'>('hybrid');
   const [hybridThreshold, setHybridThreshold] = useState(75);
-  const [acceptedParams, setAcceptedParams] = useState<Record<string, Set<keyof OtoParameters>>>({});
+  const [manualParamAcceptance, setManualParamAcceptance] = useState<Record<string, Partial<Record<keyof OtoParameters, boolean>>>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = async (file: File) => {
@@ -60,12 +59,14 @@ export const ImportOtoModal: React.FC<ImportOtoModalProps> = ({
     const generatedMap = new Map<string, OtoParameters>();
     const durations = new Map<string, number>();
     const aliasMap = new Map<string, string>();
+    const confidenceMap = new Map<string, number>();
 
     for (const f of files) {
       if (f.oto) {
         generatedMap.set(f.name, f.oto);
         durations.set(f.name, f.durationMs);
         aliasMap.set(f.name, f.alias || f.name.replace(/\.[^/.]+$/, ''));
+        confidenceMap.set(f.name, f.confidence);
       }
     }
 
@@ -74,28 +75,29 @@ export const ImportOtoModal: React.FC<ImportOtoModalProps> = ({
       return;
     }
 
-    const cmps = compareBatch(baseEntries, generatedMap, aliasMap, durations);
+    const cmps = compareBatch(baseEntries, generatedMap, aliasMap, durations, confidenceMap);
     setComparisons(cmps);
-    const initialAccepted: Record<string, Set<keyof OtoParameters>> = {};
-    for (const c of cmps) {
-      initialAccepted[c.fileName] = new Set(
-        c.changes.filter(ch => ch.confidence >= hybridThreshold).map(ch => ch.param)
-      );
-    }
-    setAcceptedParams(initialAccepted);
+    setManualParamAcceptance({});
   };
 
   const toggleParamAccept = (fileName: string, param: keyof OtoParameters) => {
-    const next = { ...acceptedParams };
-    if (!next[fileName]) next[fileName] = new Set();
-    if (next[fileName].has(param)) next[fileName].delete(param);
-    else next[fileName].add(param);
-    setAcceptedParams(next);
+    const change = comparisons.find(comparison => comparison.fileName === fileName)?.changes.find(item => item.param === param);
+    if (!change) return;
+    const defaultAccepted = mode === 'hybrid' && change.confidence >= hybridThreshold;
+    const currentAccepted = manualParamAcceptance[fileName]?.[param] ?? defaultAccepted;
+    setManualParamAcceptance(previous => ({
+      ...previous,
+      [fileName]: { ...previous[fileName], [param]: !currentAccepted },
+    }));
   };
 
   const handleApply = () => {
     const finalComparisons = comparisons.map(c => {
-      const accepted = acceptedParams[c.fileName] || new Set();
+      const accepted = new Set<keyof OtoParameters>(
+        c.changes
+          .filter(change => manualParamAcceptance[c.fileName]?.[change.param] ?? (mode === 'hybrid' && change.confidence >= hybridThreshold))
+          .map(change => change.param)
+      );
       return {
         ...c,
         mergedOto: applyOtoChanges(
@@ -110,7 +112,7 @@ export const ImportOtoModal: React.FC<ImportOtoModalProps> = ({
     setStep('file');
     setBaseEntries([]);
     setComparisons([]);
-    setAcceptedParams({});
+    setManualParamAcceptance({});
   };
 
   if (!isOpen) return null;
@@ -144,18 +146,6 @@ export const ImportOtoModal: React.FC<ImportOtoModalProps> = ({
           )}
 
           <div className="grid grid-cols-2 gap-3">
-            <Select
-              label="Base OTO Encoding"
-              value={encoding}
-              onChange={e => setEncoding(e.target.value as any)}
-              options={[
-                { value: 'Shift-JIS', label: 'Shift-JIS (Windows UTAU)' },
-                { value: 'UTF-8', label: 'UTF-8' },
-                { value: 'UTF-8-BOM', label: 'UTF-8 with BOM' },
-              ]}
-              placeholder="Select encoding"
-            />
-
             <Select
               label="Mode"
               value={mode}
@@ -228,7 +218,7 @@ export const ImportOtoModal: React.FC<ImportOtoModalProps> = ({
                   </thead>
                   <tbody>
                     {c.changes.map(ch => {
-                      const isAccepted = acceptedParams[c.fileName]?.has(ch.param) ?? (ch.confidence >= hybridThreshold);
+                      const isAccepted = manualParamAcceptance[c.fileName]?.[ch.param] ?? (mode === 'hybrid' && ch.confidence >= hybridThreshold);
                       return (
                         <tr key={ch.param} className={`border-b border-border-subtle/50 ${isAccepted ? 'bg-state-success-bg/20' : ''}`}>
                           <td className="py-1.5 text-text-secondary">{ch.param}</td>

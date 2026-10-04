@@ -4,6 +4,7 @@ dist/
 coverage/
 release/*.exe
 release/*.blockmap
+release/*.yml
 release/builder-debug.yml
 release/win-unpacked/
 .DS_Store

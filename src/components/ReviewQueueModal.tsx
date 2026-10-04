@@ -27,7 +27,9 @@ export const ReviewQueueModal: React.FC<ReviewQueueModalProps> = ({
     file.status === 'review_needed' ||
     (file.status === 'analyzed' && (file.confidence < 90 || file.issues.length > 0))
   );
-  const highConfidenceCount = files.filter(f => f.confidence >= 90).length;
+  const highConfidenceCount = files.filter(f =>
+    f.status === 'analyzed' && f.confidence >= 90 && f.issues.length === 0
+  ).length;
 
   return (
     <Modal

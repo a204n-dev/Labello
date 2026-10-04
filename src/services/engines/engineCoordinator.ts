@@ -42,6 +42,7 @@ export class EngineCoordinator {
     options?: {
       enabledEngineIds?: string[];
       onlineFallback?: boolean;
+      profileId?: string;
     }
   ): Promise<CrossVerificationResult> {
     const enabledIds = options?.enabledEngineIds || ['acoustic_dsp', 'sofa_aligner', 'whisper_asr', 'mfa_aligner'];
@@ -57,7 +58,7 @@ export class EngineCoordinator {
 
     // Execute engines in parallel
     const enginePromises = activeEngines.map(engine => 
-      engine.analyzeAudio(audioBuffer, fileName, aliasOrLyrics, { mode })
+      engine.analyzeAudio(audioBuffer, fileName, aliasOrLyrics, { mode, profileId: options?.profileId })
         .catch(err => ({
           engineId: engine.id,
           engineName: engine.name,

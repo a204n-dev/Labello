@@ -28,9 +28,9 @@ export function exportLabText(file: AudioFileItem, lineEnding: LineEnding = 'CRL
   const phonemes = file.phonemes || [];
 
   for (const p of phonemes) {
-    const startSec = (p.startMs / 1000).toFixed(6);
-    const endSec = (p.endMs / 1000).toFixed(6);
-    lines.push(`${startSec} ${endSec} ${p.phoneme}`);
+    const startTicks = Math.round(p.startMs * 10_000);
+    const endTicks = Math.round(p.endMs * 10_000);
+    lines.push(`${startTicks} ${endTicks} ${p.phoneme}`);
   }
 
   return lines.join(eol) + eol;
@@ -52,7 +52,7 @@ export function exportTextGrid(file: AudioFileItem): string {
     out += `        intervals [${idx + 1}]:\n`;
     out += `            xmin = ${xmin}\n`;
     out += `            xmax = ${xmax}\n`;
-    out += `            text = "${p.phoneme}"\n`;
+    out += `            text = "${p.phoneme.replace(/"/g, '""')}"\n`;
   });
 
   return out;

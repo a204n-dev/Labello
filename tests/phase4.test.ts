@@ -89,6 +89,10 @@ check('fuzzyScore: similar strings', () => {
   assert.ok(s >= 60 && s <= 90);
 });
 
+check('fuzzyScore: romanized and hiragana aliases match', () => {
+  assert.ok(fuzzyScore('byo', 'びょ') >= 95);
+});
+
 check('generateCandidates: produces expected variants', () => {
   const cands = generateCandidates('ka', 'singer', 'mono');
   assert.ok(cands.includes('ka.wav'));
@@ -147,6 +151,25 @@ check('matchAll: fuzzy alias match', () => {
   const results = matchAll(audio, reclist, oto, { prefix: 'singer' });
   assert.strictEqual(results.length, 1);
   assert.strictEqual(results[0].match, 'exact');
+});
+
+check('matchAll: romanized reclist finds hiragana alias', () => {
+  const audio = [makeAudio('byo.wav', 'びょ')];
+  const reclist = [{ alias: 'byo', phoneme: 'byo', lineNumber: 1, rawLine: 'byo' }];
+  const oto = [makeOto('byo.wav', 'びょ')];
+  const results = matchAll(audio, reclist, oto);
+  assert.strictEqual(results[0].audioFile?.alias, 'びょ');
+  assert.ok(results[0].otoEntry);
+});
+
+check('matchAll: CVVC transition aliases match mixed kana and romaji', () => {
+  const audio = [makeAudio('a_k.wav', 'a k')];
+  const reclist = [{ alias: 'あ k', phoneme: 'a k', lineNumber: 1, rawLine: 'a k' }];
+  const oto = [makeOto('a_k.wav', 'a k')];
+  const results = matchAll(audio, reclist, oto);
+  assert.strictEqual(results[0].match, 'exact');
+  assert.strictEqual(results[0].audioFile?.name, 'a_k.wav');
+  assert.ok(results[0].otoEntry);
 });
 
 check('matchAll: missing WAV detected', () => {

@@ -10,20 +10,20 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ variant = 'primary', size = 'md', loading = false, icon, iconPosition = 'left', className = '', children, disabled, ...props }, ref) => {
-    const baseStyles = 'inline-flex items-center justify-center font-semibold rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-border-focus disabled:opacity-50 disabled:cursor-not-allowed';
+    const baseStyles = 'inline-flex min-h-8 items-center justify-center font-semibold rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-border-focus disabled:opacity-50 disabled:cursor-not-allowed';
 
     const variants = {
-      primary: 'bg-mode-utau hover:bg-mode-utau/90 active:bg-mode-utau text-white shadow-sm shadow-mode-utau/20',
-      secondary: 'bg-bg-tertiary hover:bg-bg-hover text-text-secondary border border-border-subtle',
-      ghost: 'bg-transparent hover:bg-bg-tertiary text-text-secondary',
-      danger: 'bg-state-error-text/10 hover:bg-state-error-text/20 text-state-error-text border border-state-error-border/30',
-      success: 'bg-state-success-bg/20 hover:bg-state-success-bg/30 text-state-success-text border border-state-success-border/30',
+      primary: 'bg-mode-utau hover:brightness-110 active:brightness-95 text-white border border-transparent',
+      secondary: 'bg-bg-tertiary hover:bg-bg-hover active:bg-bg-elevated text-text-primary border border-border-default',
+      ghost: 'bg-transparent hover:bg-bg-hover active:bg-bg-elevated text-text-secondary',
+      danger: 'bg-transparent hover:bg-state-error-bg text-state-error-text border border-border-default',
+      success: 'bg-transparent hover:bg-state-success-bg text-state-success-text border border-border-default',
     };
 
     const sizes = {
-      sm: 'px-2 py-1 text-[10px] gap-1',
-      md: 'px-3 py-1.5 text-xs gap-1.5',
-      lg: 'px-4 py-2 text-sm gap-2',
+      sm: 'min-h-7 px-2 text-xs gap-1',
+      md: 'px-3 text-xs gap-1.5',
+      lg: 'min-h-9 px-4 text-sm gap-2',
     };
 
     return (
