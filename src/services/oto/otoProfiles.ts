@@ -40,7 +40,7 @@ export const VOICEBANK_PROFILES: VoicebankProfile[] = [
     recordingStyle: 'CVVC',
     sampleStructure: '[consonant][vowel] and [vowel] [consonant]',
     defaultOverlapRatio: 0.30,
-    expectedPhonemes: ['ka', 'ak', 'sa', 'as', 'ta', 'at'],
+    expectedPhonemes: ['ka', 'ki', 'ku', 'ke', 'ko', 'a k', 'i k', 'u k', 'a s', 'i s', 'a t', 'i t'],
   },
   {
     id: 'english_arpasing',

@@ -20,6 +20,7 @@ import {
   Layout,
   PanelRight,
   Settings,
+  X,
 } from 'lucide-react';
 import { WorkstationMode, VoicebankProfileId } from '../types/workstation';
 import { JAPANESE_VOICEBANK_PROFILES, VOICEBANK_PROFILES } from '../services/oto/otoProfiles';
@@ -46,9 +47,12 @@ interface HeaderProps {
   onSaveProject: () => void;
   onLoadProject: () => void;
   onNewProject: () => void;
+  onCloseProject: () => void;
   onOpenAudio?: () => void;
   onOpenAudioFolder?: () => void;
+  onImportLabels?: () => void;
   onImportOto?: () => void;
+  onPackageVoicebank?: () => void;
   onOpenReclistMatch?: () => void;
   enableSpectrogram: boolean;
   onToggleSpectrogram: () => void;
@@ -94,9 +98,12 @@ export const Header: React.FC<HeaderProps> = ({
   onSaveProject,
   onLoadProject,
   onNewProject,
+  onCloseProject,
   onOpenAudio,
   onOpenAudioFolder,
+  onImportLabels,
   onImportOto,
+  onPackageVoicebank,
   onOpenReclistMatch,
   enableSpectrogram,
   onToggleSpectrogram,
@@ -110,8 +117,8 @@ export const Header: React.FC<HeaderProps> = ({
   const [viewMenuOpen, setViewMenuOpen] = useState(false);
   const modeAccent = mode === 'utau' ? 'text-mode-utau' : 'text-mode-diffsinger';
   const primaryActionAccent = mode === 'utau'
-    ? 'bg-mode-utau hover:bg-mode-utau/90 active:bg-mode-utau shadow-mode-utau/20'
-    : 'bg-mode-diffsinger hover:bg-mode-diffsinger/90 active:bg-mode-diffsinger shadow-mode-diffsinger/20';
+    ? 'bg-mode-utau hover:brightness-110 active:brightness-95'
+    : 'bg-mode-diffsinger hover:brightness-110 active:brightness-95';
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === '?' && e.shiftKey) {
@@ -132,12 +139,12 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <>
-      <header className="min-h-[var(--header-height)] bg-bg-secondary border-b border-border-subtle px-3 py-2 flex flex-wrap items-center gap-x-4 gap-y-2 2xl:flex-nowrap 2xl:justify-between 2xl:px-4 2xl:py-0 select-none text-text-primary" onKeyDown={handleKeyDown}>
+      <header className="relative z-20 min-h-[var(--header-height)] bg-bg-secondary border-b border-border-subtle px-3 py-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 2xl:px-4 select-none text-text-primary" onKeyDown={handleKeyDown}>
         {/* Left: Brand, project context, and UTAU format */}
-        <div className="flex items-center gap-3 min-w-0 flex-1 basis-full 2xl:basis-auto">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
           <div className="flex items-center gap-2.5 shrink-0">
-            <img src="/labello-icon.png" alt="" className="w-8 h-8 rounded-lg object-cover border border-border-subtle" />
-            <div className="hidden sm:block font-semibold text-sm tracking-tight text-text-primary">
+            <img src="/labello-icon.png" alt="" className="w-7 h-7 rounded-md object-cover border border-border-subtle" />
+            <div className="hidden sm:block font-semibold text-[13px] tracking-tight text-text-primary">
               Labello
             </div>
           </div>
@@ -145,8 +152,8 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="h-5 w-px bg-border-subtle mx-1 hidden sm:block" />
 
           <div className="flex min-w-0 items-center gap-2">
-            <span className={`shrink-0 rounded-md px-2 py-1 text-[11px] font-semibold ${mode === 'utau' ? 'bg-mode-utau/15 text-mode-utau' : 'bg-mode-diffsinger/15 text-mode-diffsinger'}`}>
-              {mode === 'utau' ? 'UTAU Auto-OTO' : 'Vocal dataset'}
+            <span className="shrink-0 rounded-md border border-border-subtle bg-bg-tertiary px-2 py-1 text-[11px] font-medium text-text-secondary">
+              {mode === 'utau' ? 'UTAU Voice Bank Maker' : 'Vocal dataset'}
             </span>
             <span className="max-w-40 truncate text-xs text-text-muted" title={projectName}>{projectName}</span>
           </div>
@@ -166,40 +173,40 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Center: Undo/Redo, View Toggles, Status */}
-        <div className="order-2 flex min-w-0 flex-1 flex-wrap items-center justify-start gap-2 shrink-0 2xl:order-none 2xl:justify-center">
+        <div className="order-3 flex w-full min-w-0 flex-wrap items-center justify-start gap-1.5 border-t border-border-subtle pt-1.5">
           {/* Undo/Redo */}
-          <div className="flex items-center bg-bg-tertiary border border-border-subtle rounded-lg p-1">
-            <button onClick={onUndo} disabled={!canUndo} title="Undo (Ctrl+Z)" className="p-1.5 text-text-secondary hover:text-text-primary disabled:opacity-30 disabled:pointer-events-none rounded transition-colors"><RotateCcw className="w-4 h-4" /></button>
-            <button onClick={onRedo} disabled={!canRedo} title="Redo (Ctrl+Y)" className="p-1.5 text-text-secondary hover:text-text-primary disabled:opacity-30 disabled:pointer-events-none rounded transition-colors"><RotateCw className="w-4 h-4" /></button>
+          <div className="flex items-center bg-bg-tertiary border border-border-subtle rounded-md p-0.5">
+            <button onClick={onUndo} disabled={!canUndo} title="Undo (Ctrl+Z)" className="min-h-7 min-w-7 rounded text-text-secondary hover:bg-bg-hover hover:text-text-primary disabled:opacity-30 disabled:pointer-events-none transition-colors"><RotateCcw className="mx-auto h-4 w-4" /></button>
+            <button onClick={onRedo} disabled={!canRedo} title="Redo (Ctrl+Y)" className="min-h-7 min-w-7 rounded text-text-secondary hover:bg-bg-hover hover:text-text-primary disabled:opacity-30 disabled:pointer-events-none transition-colors"><RotateCw className="mx-auto h-4 w-4" /></button>
           </div>
 
           <div className="w-px h-5 bg-border-subtle mx-1" />
 
           {/* Spectrogram Toggle */}
-          <button onClick={onToggleSpectrogram} className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-lg border transition-all ${enableSpectrogram ? 'bg-state-info-bg text-state-info-text border-state-info-border' : 'bg-bg-tertiary text-text-secondary border-border-subtle hover:text-text-primary'}`} title="Toggle FFT Spectrogram (S)">
+          <button onClick={onToggleSpectrogram} aria-pressed={enableSpectrogram} className={`flex min-h-8 items-center gap-1.5 px-2.5 text-xs rounded-md border transition-colors ${enableSpectrogram ? 'bg-accent-bg/50 text-accent-text border-accent-border' : 'bg-bg-tertiary text-text-secondary border-border-subtle hover:bg-bg-hover hover:text-text-primary'}`} title="Toggle FFT Spectrogram (S)">
             <Eye className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Spectrogram</span>
           </button>
 
           {/* Review Queue */}
-          <button onClick={onOpenReviewQueue} className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-lg border transition-all ${reviewCount > 0 ? 'bg-state-warning-bg/20 text-state-warning-text border-state-warning-border/50 hover:bg-state-warning-bg/30' : 'bg-bg-tertiary text-state-success-text border-border-subtle hover:bg-bg-hover'}`}>
+          <button onClick={onOpenReviewQueue} className={`flex min-h-8 items-center gap-1.5 px-2.5 text-xs rounded-md border transition-colors ${reviewCount > 0 ? 'bg-state-warning-bg/20 text-state-warning-text border-state-warning-border/50 hover:bg-state-warning-bg/30' : 'bg-bg-tertiary text-text-secondary border-border-subtle hover:bg-bg-hover'}`}>
             {reviewCount > 0 ? <AlertTriangle className="w-3.5 h-3.5" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
             <span className="hidden sm:inline">Review Queue</span>
             <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${reviewCount > 0 ? 'bg-state-warning-text text-bg-primary' : 'bg-state-success-bg text-state-success-text'}`}>{reviewCount}</span>
           </button>
 
           {/* Dataset Health */}
-          <button onClick={onOpenHealth} className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-lg bg-bg-tertiary border border-border-subtle text-text-secondary hover:bg-bg-hover transition-colors">
+          <button onClick={onOpenHealth} className="flex min-h-8 items-center gap-1.5 px-2.5 text-xs rounded-md bg-bg-tertiary border border-border-subtle text-text-secondary hover:bg-bg-hover transition-colors">
             <Sliders className={`w-3.5 h-3.5 ${modeAccent}`} />
-            <span className="hidden sm:inline">Health</span>
+            <span className="hidden sm:inline">Health & Cleanup</span>
             <span className={`font-semibold ${healthScore >= 90 ? 'text-state-success-text' : healthScore >= 70 ? 'text-state-warning-text' : 'text-state-error-text'}`}>{healthScore}/100</span>
           </button>
         </div>
 
         {/* Right: Actions, File Menu, View Menu, Help */}
-        <div className="order-3 ml-auto flex shrink-0 flex-wrap items-center justify-end gap-1.5 2xl:order-none">
+        <div className="order-2 ml-auto flex min-w-0 flex-wrap items-center justify-end gap-1.5">
           {/* Primary Action */}
-          <button onClick={onBatchAnalyze} disabled={isAnalyzing} className={`flex items-center gap-1.5 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-all shadow-sm disabled:opacity-50 ${primaryActionAccent}`}>
+          <button onClick={onBatchAnalyze} disabled={isAnalyzing} className={`flex min-h-8 items-center gap-1.5 text-text-inverse text-xs font-semibold px-3 rounded-md transition-colors disabled:opacity-50 ${primaryActionAccent}`}>
             <Sparkles className={`w-3.5 h-3.5 ${isAnalyzing ? 'animate-spin' : ''}`} />
             <span>{isAnalyzing ? 'Analyzing...' : mode === 'utau' ? 'Estimate OTO All' : 'Estimate Labels'}</span>
           </button>
@@ -213,14 +220,19 @@ export const Header: React.FC<HeaderProps> = ({
             items={[
               { label: 'Add Audio Files…', onClick: () => onOpenAudio?.(), icon: <FolderOpen className="w-3.5 h-3.5" />, shortcut: 'Ctrl+O' },
               { label: 'Open Audio Folder…', onClick: () => onOpenAudioFolder?.(), icon: <FolderOpen className="w-3.5 h-3.5" />, dividerAfter: mode === 'utau' },
+              ...(mode === 'diffsinger' ? [
+                { label: 'Import Phoneme Labels…', onClick: () => onImportLabels?.(), icon: <FileText className="w-3.5 h-3.5" />, dividerAfter: true },
+              ] : []),
               ...(mode === 'utau' ? [
                 { label: 'Import Base OTO (oto.ini)…', onClick: () => onImportOto?.(), icon: <FolderOpen className="w-3.5 h-3.5" />, dividerAfter: true },
                 { label: 'Reclist Match Report…', onClick: () => onOpenReclistMatch?.(), icon: <FileText className="w-3.5 h-3.5" /> },
+                { label: 'Package Voicebank…', onClick: () => onPackageVoicebank?.(), icon: <Package className="w-3.5 h-3.5" />, dividerAfter: true },
               ] : []),
               { dividerAfter: true },
               { label: 'New Project…', onClick: onNewProject, icon: <FileText className="w-3.5 h-3.5" /> },
-              { label: 'Open Project (.vbp)…', onClick: onLoadProject, icon: <FolderOpen className="w-3.5 h-3.5" /> },
-              { label: 'Save Project (.vbp)', onClick: onSaveProject, icon: <Save className="w-3.5 h-3.5" />, shortcut: 'Ctrl+S' },
+              { label: 'Close Project…', onClick: onCloseProject, icon: <X className="w-3.5 h-3.5" /> },
+              { label: 'Open Project (.labello; legacy .vbp)…', onClick: onLoadProject, icon: <FolderOpen className="w-3.5 h-3.5" /> },
+              { label: 'Save Project (.labello)', onClick: onSaveProject, icon: <Save className="w-3.5 h-3.5" />, shortcut: 'Ctrl+S' },
             ]}
           >
             <Menu className="w-4 h-4" />
@@ -241,20 +253,20 @@ export const Header: React.FC<HeaderProps> = ({
           </Dropdown>
 
           {/* Help / Shortcuts */}
-          <button onClick={() => setShortcutsOpen(!shortcutsOpen)} className="p-1.5 text-text-secondary hover:text-text-primary hover:bg-bg-tertiary rounded-lg transition-colors" title="Keyboard Shortcuts (Shift+?)">
+          <button onClick={() => setShortcutsOpen(!shortcutsOpen)} aria-label="Keyboard shortcuts" className="min-h-8 min-w-8 text-text-secondary hover:text-text-primary hover:bg-bg-hover rounded-md transition-colors" title="Keyboard Shortcuts (Shift+?)">
             <HelpCircle className="w-4 h-4" />
           </button>
 
           {/* Secondary Actions */}
           <div className="flex items-center gap-1">
-            <button onClick={onOpenDiagnostics} title="Engine availability and system information" aria-label="Engine availability and system information" className="p-1.5 text-text-secondary hover:text-text-primary hover:bg-bg-tertiary rounded-lg transition-colors"><Settings2 className="w-4 h-4" /></button>
+            <button onClick={onOpenDiagnostics} title="Engine availability and system information" aria-label="Engine availability and system information" className="min-h-8 min-w-8 text-text-secondary hover:text-text-primary hover:bg-bg-hover rounded-md transition-colors"><Settings2 className="mx-auto h-4 w-4" /></button>
           </div>
 
           <div className="h-5 w-px bg-border-subtle mx-1" />
 
           {/* Export & Releases */}
-          <button onClick={onOpenExport} className="flex items-center gap-1.5 bg-bg-tertiary hover:bg-bg-hover text-text-primary text-xs font-medium px-3 py-1.5 rounded-lg border border-border-subtle transition-all"><Download className="w-3.5 h-3.5" /><span>Export</span></button>
-          <button onClick={onOpenReleases} className="flex items-center gap-1.5 bg-accent-bg/80 hover:bg-accent-bg text-accent-text text-xs font-semibold px-3 py-1.5 rounded-lg border border-accent-border/60 transition-all shadow-xs" title="About Labello and releases"><Package className="w-3.5 h-3.5" /><span>About</span></button>
+          <button onClick={onOpenExport} className="flex min-h-8 items-center gap-1.5 bg-bg-tertiary hover:bg-bg-hover text-text-primary text-xs font-medium px-3 rounded-md border border-border-default transition-colors"><Download className="w-3.5 h-3.5" /><span>Export</span></button>
+          <button onClick={onOpenReleases} className="flex min-h-8 items-center gap-1.5 bg-bg-tertiary hover:bg-bg-hover text-text-primary text-xs font-medium px-3 rounded-md border border-border-default transition-colors" title="About Labello and releases"><Package className="w-3.5 h-3.5" /><span>About</span></button>
         </div>
       </header>
 

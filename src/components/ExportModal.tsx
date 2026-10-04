@@ -3,6 +3,7 @@ import { X, Download, Copy, Check, FileCode, Sliders, ChevronDown } from 'lucide
 import { AudioFileItem, WorkstationMode, LineEnding, TextEncoding } from '../types/workstation';
 import { generateOtoIniContent, createOtoIniBlob } from '../services/oto/otoExporter';
 import { exportDiffSingerJson, exportLabText, exportTextGrid } from '../services/diffsinger/diffsingerExporter';
+import { exportAudacityLabels } from '../services/diffsinger/datasetLabelFormats';
 import { 
   generateVLabelerOtoProfile, 
   generateVLabelerDiffSingerProfile, 
@@ -31,7 +32,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   const [encoding, setEncoding] = useState<TextEncoding>('Shift-JIS');
   const [includeComments, setIncludeComments] = useState<boolean>(true);
   const [utauFormat, setUtauFormat] = useState<'oto_ini' | 'vlabeler_labeler' | 'vlabeler_project'>('oto_ini');
-  const [diffSingerFormat, setDiffSingerFormat] = useState<'ds_json' | 'lab' | 'textgrid' | 'vlabeler_labeler' | 'vlabeler_project'>('ds_json');
+  const [diffSingerFormat, setDiffSingerFormat] = useState<'ds_json' | 'lab' | 'audacity' | 'textgrid' | 'vlabeler_labeler' | 'vlabeler_project'>('ds_json');
   const [copied, setCopied] = useState<boolean>(false);
   const [exportError, setExportError] = useState<string | null>(null);
 
@@ -64,6 +65,10 @@ export const ExportModal: React.FC<ExportModalProps> = ({
       const target = activeFile || files[0];
       outputText = target ? exportTextGrid(target) : '';
       downloadFileName = target ? `${target.name.replace(/\.[^/.]+$/, "")}.TextGrid` : 'sample.TextGrid';
+    } else if (diffSingerFormat === 'audacity') {
+      const target = activeFile || files[0];
+      outputText = target ? exportAudacityLabels(target) : '';
+      downloadFileName = target ? `${target.name.replace(/\.[^/.]+$/, "")}.txt` : 'sample.txt';
     } else if (diffSingerFormat === 'vlabeler_labeler') {
       outputText = generateVLabelerDiffSingerProfile();
       downloadFileName = 'diffsinger.labeler.json';
@@ -119,7 +124,8 @@ export const ExportModal: React.FC<ExportModalProps> = ({
 
   const diffSingerFormatOptions = [
     { value: 'ds_json', label: 'DiffSinger Dataset (.ds JSON)' },
-    { value: 'lab', label: 'HTS / Phoneme Duration (.lab)' },
+    { value: 'lab', label: 'HTK 100-ns labels (.lab)' },
+    { value: 'audacity', label: 'Audacity labels (.txt)' },
     { value: 'textgrid', label: 'Praat Interval Tier (.TextGrid)' },
     { value: 'vlabeler_labeler', label: 'vLabeler Profile (diffsinger.labeler.json)' },
     { value: 'vlabeler_project', label: 'vLabeler Project Descriptor (.json)' },

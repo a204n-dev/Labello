@@ -3,6 +3,8 @@ import { Sparkles, Pause, Play, X, CheckCircle2 } from 'lucide-react';
 
 interface BatchProgressModalProps {
   isOpen: boolean;
+  isAnalyzing: boolean;
+  isCancellationRequested: boolean;
   total: number;
   current: number;
   currentFileName: string;
@@ -14,6 +16,8 @@ interface BatchProgressModalProps {
 
 export const BatchProgressModal: React.FC<BatchProgressModalProps> = ({
   isOpen,
+  isAnalyzing,
+  isCancellationRequested,
   total,
   current,
   currentFileName,
@@ -25,22 +29,31 @@ export const BatchProgressModal: React.FC<BatchProgressModalProps> = ({
   if (!isOpen) return null;
 
   const percent = total > 0 ? Math.round((current / total) * 100) : 0;
-  const isComplete = current >= total && total > 0;
+  const isComplete = !isAnalyzing;
+  const isCancelling = isAnalyzing && isCancellationRequested;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4">
       <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-xl shadow-2xl overflow-hidden p-5 text-slate-200 space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="p-2 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
+            <div className="p-2 rounded-md bg-blue-500/10 border border-blue-500/20 text-blue-400">
               <Sparkles className={`w-5 h-5 ${!isComplete && !isPaused ? 'animate-spin' : ''}`} />
             </div>
             <div>
               <h3 className="text-sm font-bold text-white">
-                {isComplete ? 'Analysis Completed' : 'Batch Auto-Analysis'}
+                {isComplete
+                  ? isCancellationRequested ? 'Batch cancelled' : 'Estimates ready'
+                  : isCancelling ? 'Cancelling analysis' : 'Batch analysis'}
               </h3>
-              <p className="text-xs text-slate-400">
-                {isComplete ? 'All files analyzed and cross-verified' : `Processing sample ${current} of ${total}`}
+              <p className="text-xs text-slate-400" role="status">
+                {isComplete
+                  ? isCancellationRequested
+                    ? 'Stopped after the current sample. Review any estimates already generated.'
+                    : 'Review these single-engine acoustic estimates before export.'
+                  : isCancelling
+                    ? 'Finishing the current sample before stopping.'
+                    : `Processing sample ${current} of ${total}`}
               </p>
             </div>
           </div>
@@ -56,11 +69,11 @@ export const BatchProgressModal: React.FC<BatchProgressModalProps> = ({
         <div className="space-y-1.5">
           <div className="flex items-center justify-between text-xs font-mono">
             <span className="text-slate-400 truncate max-w-[240px] font-semibold">{currentFileName}</span>
-            <span className="text-indigo-400 font-bold">{percent}%</span>
+            <span className="text-blue-400 font-bold">{percent}%</span>
           </div>
           <div className="h-2 w-full bg-slate-950 rounded-full overflow-hidden border border-slate-800">
             <div
-              className="h-full bg-indigo-500 transition-all duration-300 rounded-full"
+              className="h-full bg-blue-500 transition-all duration-300 rounded-full"
               style={{ width: `${percent}%` }}
             />
           </div>
@@ -74,7 +87,7 @@ export const BatchProgressModal: React.FC<BatchProgressModalProps> = ({
 
         {/* Buttons */}
         <div className="flex items-center justify-end gap-2 pt-1">
-          {!isComplete && (
+          {!isComplete && !isCancelling && (
             <button
               onClick={onTogglePause}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-md text-xs font-medium transition-colors"
@@ -85,13 +98,14 @@ export const BatchProgressModal: React.FC<BatchProgressModalProps> = ({
           )}
           <button
             onClick={onCancel}
+            disabled={isCancelling}
             className={`px-4 py-1.5 rounded-md text-xs font-semibold transition-colors ${
               isComplete
-                ? 'bg-indigo-600 hover:bg-indigo-500 text-white'
-                : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+                ? 'bg-blue-500 hover:bg-blue-400 text-white'
+                : 'bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-60 disabled:pointer-events-none'
             }`}
           >
-            {isComplete ? 'Done' : 'Cancel'}
+            {isComplete ? 'Done' : isCancelling ? 'Cancelling…' : 'Cancel batch'}
           </button>
         </div>
       </div>

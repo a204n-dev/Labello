@@ -1,7 +1,7 @@
 /**
  * Unified Vocal Labeling Workstation
  * Local-First Intelligent Vocal & Audio Labeling System (VLabeler Foundation)
- * UTAU Auto-OTO and vocal-dataset labeling workflows
+ * UTAU voicebank authoring and vocal-dataset labeling workflows
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
@@ -18,6 +18,8 @@ import { ReleasesModal } from './components/ReleasesModal';
 import { ImportOtoModal } from './components/ImportOtoModal';
 import { ReclistMatchModal } from './components/ReclistMatchModal';
 import { NewProjectModal } from './components/NewProjectModal';
+import { VoicebankPackageModal } from './components/VoicebankPackageModal';
+import { CloseProjectModal } from './components/CloseProjectModal';
 
 import { 
   AudioFileItem, 
@@ -27,11 +29,15 @@ import {
   OtoParameters, 
   DiffSingerPhoneme,
   ParsedOtoEntry,
+  VoicebankMetadata,
 } from './types/workstation';
 import { createSyntheticVocalBuffer, extractPeaks, decodeAudioData } from './services/dsp/audioUtils';
 import { EngineCoordinator } from './services/engines/engineCoordinator';
 import { validateDatasetHealth } from './services/diffsinger/datasetValidator';
 import { getProfileById } from './services/oto/otoProfiles';
+import { romajiToHiragana } from './services/oto/japaneseKana';
+import { generateOtoIniContent } from './services/oto/otoExporter';
+import { importDatasetLabelFiles, type DatasetLabelFormat } from './services/diffsinger/datasetLabelFormats';
 import type { OtoComparisonResult } from './services/oto/otoUpdater';
 import type { MatchResult } from './services/reclist/reclistParser';
 interface AudioImportCandidate {
@@ -51,6 +57,7 @@ interface LabelloProject {
   mode: WorkstationMode;
   profileId: VoicebankProfileId;
   settings: ProjectSettings;
+  voicebankMetadata?: VoicebankMetadata;
   files: SavedProjectFile[];
 }
 
@@ -75,8 +82,17 @@ export default function App() {
   const [profileId, setProfileId] = useState<VoicebankProfileId>('japanese_cv');
   const [files, setFiles] = useState<AudioFileItem[]>([]);
   const [projectName, setProjectName] = useState('Vocal Labeling Workspace');
+  const [voicebankMetadata, setVoicebankMetadata] = useState<VoicebankMetadata>({
+    characterName: 'Japanese Voicebank',
+    author: '',
+    version: '1.0',
+    readme: '',
+  });
   const [projectReady, setProjectReady] = useState(false);
   const [isNewProjectOpen, setIsNewProjectOpen] = useState(false);
+  const [pendingCloseAction, setPendingCloseAction] = useState<'exit' | 'close-project' | 'new-project' | 'open-project' | null>(null);
+  const [isSavingBeforeClose, setIsSavingBeforeClose] = useState(false);
+  const [closeSaveError, setCloseSaveError] = useState<string | null>(null);
   const [activeFileId, setActiveFileId] = useState<string | null>(null);
   const [selectedPhonemeId, setSelectedPhonemeId] = useState<string | null>(null);
 
@@ -92,6 +108,7 @@ export default function App() {
   const [isReleasesOpen, setIsReleasesOpen] = useState(false);
   const [isImportOtoOpen, setIsImportOtoOpen] = useState(false);
   const [isReclistMatchOpen, setIsReclistMatchOpen] = useState(false);
+  const [isVoicebankPackageOpen, setIsVoicebankPackageOpen] = useState(false);
   const [updateStatus, setUpdateStatus] = useState<DesktopUpdateStatus>({ status: 'idle' });
   const [deferredUpdateVersion, setDeferredUpdateVersion] = useState<string | null>(null);
   const [updatePreferenceLoaded, setUpdatePreferenceLoaded] = useState(false);
@@ -109,6 +126,7 @@ export default function App() {
   const [currentBatchFile, setCurrentBatchFile] = useState('');
   const [batchStage, setBatchStage] = useState('');
   const [batchPaused, setBatchPaused] = useState(false);
+  const [batchCancellationRequested, setBatchCancellationRequested] = useState(false);
   const batchCancelRef = useRef(false);
   const batchPauseRef = useRef(false);
 
@@ -147,6 +165,18 @@ export default function App() {
       isCurrent = false;
       unsubscribe();
     };
+  }, []);
+
+  useEffect(() => {
+    if (!window.labelloDesktop) return;
+    window.labelloDesktop.setProjectOpen(projectReady).catch(error => {
+      console.error('Could not update the desktop project-open state:', error);
+    });
+  }, [projectReady]);
+
+  useEffect(() => {
+    if (!window.labelloDesktop) return;
+    return window.labelloDesktop.onCloseRequested(() => setPendingCloseAction('exit'));
   }, []);
 
   const pushHistory = useCallback((newFiles: AudioFileItem[]) => {
@@ -209,6 +239,12 @@ export default function App() {
     setActiveFileId(null);
     setSelectedPhonemeId(null);
     setProjectName(name);
+    setVoicebankMetadata({
+      characterName: name,
+      author: '',
+      version: '1.0',
+      readme: '',
+    });
     setImportErrors([]);
     setSidebarOpen(true);
     setPropertiesOpen(true);
@@ -218,10 +254,18 @@ export default function App() {
   };
 
   const handleNewProject = () => {
-    if (files.length > 0 && !window.confirm('Starting a new project will close the current samples and labels. Save this project first if you need to keep it. Continue?')) {
-      return;
-    }
-    setIsNewProjectOpen(true);
+    if (projectReady) setPendingCloseAction('new-project');
+    else setIsNewProjectOpen(true);
+  };
+
+  const handleCloseProject = () => {
+    if (projectReady) setPendingCloseAction('close-project');
+  };
+
+  const handleOpenAnotherProject = () => {
+    setIsNewProjectOpen(false);
+    if (projectReady) setPendingCloseAction('open-project');
+    else void handleLoadProject();
   };
 
   const canUndo = historyIndexRef.current > 0;
@@ -357,6 +401,7 @@ export default function App() {
     setBatchTotal(targetFiles.length);
     setBatchCurrent(0);
     batchCancelRef.current = false;
+    setBatchCancellationRequested(false);
     batchPauseRef.current = false;
     setBatchPaused(false);
 
@@ -437,6 +482,7 @@ export default function App() {
   // Phase 2 — Import with validation + friendly errors + project registration.
   // Never modifies the original file; decodes a copy into memory.
   const [importErrors, setImportErrors] = useState<string[]>([]);
+  const [importNotice, setImportNotice] = useState<string | null>(null);
   const handleImportAudio = async (candidates: AudioImportCandidate[]) => {
     const { validateAudioFile, buildMetadata } = await import('./services/audio/audioMetadata');
     const imported: AudioFileItem[] = [];
@@ -486,7 +532,10 @@ export default function App() {
           continue;
         }
         const peaks = extractPeaks(audioBuf, 1200);
-        const alias = file.name.replace(/\.[^/.]+$/, '').split(/[\\/]/).pop() || file.name;
+        const fileStem = file.name.replace(/\.[^/.]+$/, '').split(/[\\/]/).pop() || file.name;
+        const alias = mode === 'utau' && getProfileById(profileId).language === 'Japanese'
+          ? romajiToHiragana(fileStem)
+          : fileStem;
         const id = `file_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
 
         imported.push({
@@ -585,6 +634,78 @@ export default function App() {
     }
   };
 
+  const handleImportLabels = async () => {
+    if (mode !== 'diffsinger') {
+      setImportErrors(['Phoneme label import is available in the vocal-dataset workflow.']);
+      return;
+    }
+    let selectedLabels: Array<{ name: string; text: string; format: DatasetLabelFormat }> = [];
+    try {
+      if (window.labelloDesktop) {
+        const selected = await window.labelloDesktop.openLabelFiles();
+        for (const label of selected) {
+          const bytes = await window.labelloDesktop.readAudioFile(label.token);
+          const contents = new TextDecoder('utf-8').decode(bytes);
+          const extension = label.name.split('.').pop()?.toLowerCase();
+          const format: DatasetLabelFormat | null = extension === 'lab'
+            ? 'lab'
+            : extension === 'textgrid'
+              ? 'textgrid'
+              : extension === 'txt'
+                ? 'audacity'
+                : null;
+          if (!format) {
+            setImportErrors([`"${label.name}" is not a supported phoneme-label format yet. Import .lab, Audacity .txt, or Praat .TextGrid files.`]);
+            return;
+          }
+          selectedLabels.push({ name: label.name, text: contents, format });
+        }
+      } else {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.multiple = true;
+        input.accept = '.lab,.txt,.textgrid';
+        const filesToRead = await new Promise<File[]>((resolve, reject) => {
+          input.onchange = () => resolve(Array.from(input.files || []));
+          input.onerror = () => reject(new Error('The label files could not be selected.'));
+          input.click();
+        });
+        selectedLabels = await Promise.all(filesToRead.map(async label => {
+          const extension = label.name.split('.').pop()?.toLowerCase();
+          const format: DatasetLabelFormat | null = extension === 'lab'
+            ? 'lab'
+            : extension === 'textgrid'
+              ? 'textgrid'
+              : extension === 'txt'
+                ? 'audacity'
+                : null;
+          if (!format) throw new Error(`"${label.name}" is not a supported phoneme-label format.`);
+          return { name: label.name, text: await label.text(), format };
+        }));
+      }
+
+      if (selectedLabels.length === 0) return;
+      const result = importDatasetLabelFiles(files, selectedLabels);
+      if (result.importedNames.length > 0) {
+        setFiles(result.files);
+        commitHistory(result.files);
+        setActiveFileId(result.files.find(file => file.name === result.importedNames[0])?.id || activeFileId);
+      }
+      const messages = [
+        ...(result.unmatchedLabelFiles.length
+          ? [`No audio recording matched: ${result.unmatchedLabelFiles.join(', ')}.`]
+          : []),
+      ];
+      setImportErrors(messages);
+      setImportNotice(result.importedNames.length
+        ? `Imported labels for ${result.importedNames.length} recording${result.importedNames.length === 1 ? '' : 's'}. Imported timings remain marked for review.`
+        : null);
+    } catch (error) {
+      setImportNotice(null);
+      setImportErrors([`Could not import labels: ${error instanceof Error ? error.message : String(error)}`]);
+    }
+  };
+
   const handleDeleteFile = (id: string) => {
     const filtered = files.filter(f => f.id !== id);
     setFiles(filtered);
@@ -603,7 +724,7 @@ export default function App() {
           ...f,
           oto: newOto,
           userModified: true,
-          status: 'verified' as const,
+          status: 'review_needed' as const,
         };
       }
       return f;
@@ -669,7 +790,7 @@ export default function App() {
 
   const handleUpdateAlias = (alias: string) => {
     if (!activeFileId) return;
-    const updated = files.map(f => (f.id === activeFileId ? { ...f, alias, userModified: true, status: 'verified' as const } : f));
+    const updated = files.map(f => (f.id === activeFileId ? { ...f, alias, userModified: true, status: 'review_needed' as const } : f));
     setFiles(updated);
     scheduleHistory(updated);
   };
@@ -697,11 +818,61 @@ export default function App() {
     scheduleHistory(updated);
   };
 
+  const handleUpdateFileNotes = (fileId: string, updates: Pick<AudioFileItem, 'starred' | 'done' | 'tag' | 'note'>) => {
+    const updated = files.map(file => file.id === fileId
+      ? { ...file, ...updates, lastModified: Date.now() }
+      : file
+    );
+    setFiles(updated);
+    scheduleHistory(updated);
+  };
+
+  const handleUpdateActiveFileNotes = (updates: Pick<AudioFileItem, 'tag' | 'note'>) => {
+    if (activeFileId) handleUpdateFileNotes(activeFileId, updates);
+  };
+
   const handleAcceptActive = () => {
     if (!activeFileId) return;
     const updated = files.map(f => (f.id === activeFileId ? { ...f, confidence: 99, status: 'verified' as const, issues: [] } : f));
     setFiles(updated);
     commitHistory(updated);
+  };
+
+  const handlePackageVoicebank = async (
+    metadata: VoicebankMetadata,
+    imageToken?: string,
+    imageName?: string
+  ) => {
+    if (!window.labelloDesktop) {
+      throw new Error('Voicebank packaging is available in the native desktop app.');
+    }
+    try {
+      const packageFiles = files.filter((file): file is AudioFileItem & { oto: OtoParameters; sourceToken: string } =>
+        Boolean(file.oto && file.sourceToken && file.status === 'verified' && /\.wav$/i.test(file.name))
+      );
+      const content = generateOtoIniContent(packageFiles, {
+        lineEnding: settings.lineEnding,
+        encoding: settings.encoding,
+        includeComments: false,
+      });
+      const result = await window.labelloDesktop.packageVoicebank({
+        name: metadata.characterName,
+        author: metadata.author,
+        version: metadata.version,
+        readme: metadata.readme,
+        otoContent: content,
+        encoding: settings.encoding,
+        audioFiles: packageFiles.map(file => ({ name: file.name, token: file.sourceToken })),
+        imageToken,
+        imageName,
+      });
+      if (!result) return;
+      setVoicebankMetadata(metadata);
+      setImportErrors([]);
+      setIsVoicebankPackageOpen(false);
+    } catch (error) {
+      throw new Error(`Could not package voicebank: ${error instanceof Error ? error.message : String(error)}`);
+    }
   };
 
   const handleAcceptFile = (fileId: string) => {
@@ -712,7 +883,7 @@ export default function App() {
 
   const handleAcceptAllHighConfidence = () => {
     const updated = files.map(f => {
-      if (f.confidence >= 90) {
+      if (f.status === 'analyzed' && f.confidence >= 90 && f.issues.length === 0) {
         return { ...f, status: 'verified' as const, issues: [] };
       }
       return f;
@@ -755,8 +926,8 @@ export default function App() {
     commitHistory(updated);
   };
 
-  // Save / Load Workspace (.vbp)
-  const handleSaveProject = async () => {
+  // Save / Load Labello projects; .vbp remains openable for legacy projects.
+  const handleSaveProject = async (): Promise<boolean> => {
     const projectData: LabelloProject = {
       format: 'labello-project',
       version: 2,
@@ -764,6 +935,7 @@ export default function App() {
       mode,
       profileId,
       settings,
+      voicebankMetadata,
       files: files.map(({ audioBuffer: _audioBuffer, waveformPeaks: _waveformPeaks, sourceToken: _sourceToken, ...file }) => file),
     };
 
@@ -773,27 +945,78 @@ export default function App() {
           projectData,
           files.map(file => ({ id: file.id, token: file.sourceToken }))
         );
-        if (saved) {
-          const name = saved.filePath.split(/[\\/]/).pop()?.replace(/\.vbp$/i, '');
-          if (name) setProjectName(name);
-          setImportErrors(saved.missingAudio.length > 0
-            ? [`Audio for ${saved.missingAudio.length} file(s) could not be embedded; those labels will need their audio re-imported when reopening the project.`]
-            : []);
-        }
-        return;
+        if (!saved) return false;
+        const name = saved.filePath.split(/[\\/]/).pop()?.replace(/\.(?:labello|vbp)$/i, '');
+        if (name) setProjectName(name);
+        setImportErrors(saved.missingAudio.length > 0
+          ? [`Audio for ${saved.missingAudio.length} file(s) could not be embedded; those labels will need their audio re-imported when reopening the project.`]
+          : []);
+        return true;
       }
       const blob = new Blob([JSON.stringify(projectData, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `project_${mode}.vbp`;
+      a.download = `project_${mode}.labello`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
+      return true;
     } catch (err) {
       setImportErrors([`Could not save project: ${err instanceof Error ? err.message : String(err)}`]);
+      return false;
     }
+  };
+
+  const finishCloseAction = async (action: NonNullable<typeof pendingCloseAction>) => {
+    setPendingCloseAction(null);
+    setCloseSaveError(null);
+    if (action === 'exit') {
+      await window.labelloDesktop?.respondToCloseRequest(true);
+      return;
+    }
+    if (action === 'new-project') {
+      setIsNewProjectOpen(true);
+      return;
+    }
+    if (action === 'open-project') {
+      await handleLoadProject();
+      return;
+    }
+
+    setProjectReady(false);
+    setFiles([]);
+    setMode('utau');
+    setProfileId('japanese_cv');
+    setProjectName('Vocal Labeling Workspace');
+    setVoicebankMetadata({ characterName: 'Japanese Voicebank', author: '', version: '1.0', readme: '' });
+    setActiveFileId(null);
+    setSelectedPhonemeId(null);
+    setImportErrors([]);
+    replaceHistory([]);
+  };
+
+  const handleCloseChoice = async (choice: 'save' | 'discard' | 'cancel') => {
+    const action = pendingCloseAction;
+    if (!action) return;
+    if (choice === 'cancel') {
+      setPendingCloseAction(null);
+      setCloseSaveError(null);
+      if (action === 'exit') await window.labelloDesktop?.respondToCloseRequest(false);
+      return;
+    }
+    if (choice === 'save') {
+      setCloseSaveError(null);
+      setIsSavingBeforeClose(true);
+      const saved = await handleSaveProject();
+      setIsSavingBeforeClose(false);
+      if (!saved) {
+        setCloseSaveError('The project was not saved. Try again, choose Don’t Save, or cancel and continue editing.');
+        return;
+      }
+    }
+    await finishCloseAction(action);
   };
 
   const restoreProject = async (project: LabelloProject, audioTokens: Record<string, string> = {}, missingAudio: string[] = []) => {
@@ -834,6 +1057,9 @@ export default function App() {
     setActiveFileId(restored[0]?.id || null);
     setSelectedPhonemeId(null);
     setProjectName(project.name || 'Vocal Labeling Workspace');
+    if (project.voicebankMetadata) {
+      setVoicebankMetadata(current => ({ ...current, ...project.voicebankMetadata }));
+    }
     if (project.mode === 'utau' || project.mode === 'diffsinger') setMode(project.mode);
     if (project.profileId) setProfileId(project.profileId);
     if (project.settings) setSettings(current => ({ ...current, ...project.settings }));
@@ -855,7 +1081,7 @@ export default function App() {
     }
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = '.vbp,.json';
+    input.accept = '.labello,.vbp,.json';
     input.onchange = async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) return;
@@ -942,14 +1168,17 @@ export default function App() {
   const activeFile = files.find(f => f.id === activeFileId) || null;
   const activeProfile = getProfileById(profileId);
   const healthReport = validateDatasetHealth(files, mode);
-  const reviewCount = files.filter(f => f.confidence < 70 || f.issues.length > 0).length;
+  const reviewCount = files.filter(file =>
+    file.status === 'review_needed' ||
+    (file.status === 'analyzed' && (file.confidence < 90 || file.issues.length > 0))
+  ).length;
   const updateAvailable = updatePreferenceLoaded &&
     (updateStatus.status === 'available' || updateStatus.status === 'downloaded') &&
     !!updateStatus.version &&
     updateStatus.version !== deferredUpdateVersion;
 
   return (
-    <div className="flex h-screen w-screen flex-col overflow-hidden bg-slate-950 font-sans antialiased text-slate-100 select-none">
+    <div data-color-mode="dark" data-dark-theme="dark" className="flex h-screen w-screen min-w-0 flex-col overflow-hidden bg-slate-950 font-sans antialiased text-slate-100 select-none">
       {projectReady ? (
         <>
           <Header
@@ -971,11 +1200,14 @@ export default function App() {
         onOpenExport={() => setIsExportOpen(true)}
         onOpenReleases={() => setIsReleasesOpen(true)}
         onSaveProject={handleSaveProject}
-        onLoadProject={handleLoadProject}
+        onLoadProject={handleOpenAnotherProject}
         onNewProject={handleNewProject}
+        onCloseProject={handleCloseProject}
         onOpenAudio={() => { void handleOpenAudio(); }}
         onOpenAudioFolder={() => { void handleOpenAudio(true); }}
+        onImportLabels={() => { void handleImportLabels(); }}
         onImportOto={() => setIsImportOtoOpen(true)}
+        onPackageVoicebank={() => setIsVoicebankPackageOpen(true)}
         onOpenReclistMatch={() => setIsReclistMatchOpen(true)}
         enableSpectrogram={settings.enableSpectrogram}
         onToggleSpectrogram={() => setSettings(s => ({ ...s, enableSpectrogram: !s.enableSpectrogram }))}
@@ -1011,20 +1243,28 @@ export default function App() {
 
       {/* Friendly import-error banner (Phase 2: never crash on a bad file) */}
       {importErrors.length > 0 && (
-        <div className="bg-amber-950/90 border-b border-amber-800/60 px-4 py-2 text-xs text-amber-200 flex items-start justify-between gap-3">
+        <div role="alert" className="bg-state-warning-bg border-b border-state-warning-border px-4 py-2 text-xs text-state-warning-text flex items-start justify-between gap-3">
           <div className="space-y-0.5">
             {importErrors.map((msg, i) => (
               <div key={i}>⚠ {msg}</div>
             ))}
           </div>
-          <button onClick={() => setImportErrors([])} className="shrink-0 px-2 py-0.5 bg-amber-900 hover:bg-amber-800 rounded text-amber-100 font-semibold">
+          <button onClick={() => setImportErrors([])} className="shrink-0 rounded px-2 py-0.5 font-semibold hover:bg-state-warning-bg/60">
+            Dismiss
+          </button>
+        </div>
+      )}
+      {importNotice && (
+        <div role="status" className="flex items-center justify-between gap-3 border-b border-state-success-border/60 bg-state-success-bg/25 px-4 py-2 text-xs text-state-success-text">
+          <span>{importNotice}</span>
+          <button onClick={() => setImportNotice(null)} className="shrink-0 rounded px-2 py-0.5 font-semibold hover:bg-state-success-bg/50">
             Dismiss
           </button>
         </div>
       )}
 
       {/* Main Workspace Layout (Left: Explorer, Center: Waveform, Right: Inspector) */}
-      <div className="flex-1 flex overflow-hidden relative">
+      <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden relative">
         {/* Left: Audio Files Explorer */}
         {sidebarOpen && (
           <SidebarFileList
@@ -1037,6 +1277,7 @@ export default function App() {
             onLoadDemoVoicebank={loadDemoVoicebank}
             onLoadDemoSingingPhrase={loadDemoSingingPhrase}
             onDeleteFile={handleDeleteFile}
+            onUpdateFileNotes={handleUpdateFileNotes}
             isOpen={sidebarOpen}
             onToggle={() => setSidebarOpen(false)}
             width={sidebarWidth}
@@ -1069,6 +1310,7 @@ export default function App() {
             onUpdateOto={handleUpdateOto}
             onUpdateAlias={handleUpdateAlias}
             onUpdateLyrics={handleUpdateLyrics}
+            onUpdateFileNotes={handleUpdateActiveFileNotes}
             onUpdatePhonemeText={handleUpdatePhonemeText}
             onAcceptFileOrRegion={handleAcceptActive}
             onReanalyzeCurrent={handleReanalyzeActive}
@@ -1098,7 +1340,7 @@ export default function App() {
         initialMode={mode}
         onClose={() => setIsNewProjectOpen(false)}
         onCreate={handleCreateProject}
-        onOpenExisting={() => { void handleLoadProject(); }}
+        onOpenExisting={handleOpenAnotherProject}
       />
 
       <ReviewQueueModal
@@ -1115,6 +1357,7 @@ export default function App() {
         onClose={() => setIsHealthOpen(false)}
         report={healthReport}
         onSelectFile={setActiveFileId}
+        onRemoveFile={handleDeleteFile}
       />
 
       <ModelDiagnosticsModal
@@ -1143,6 +1386,8 @@ export default function App() {
 
       <BatchProgressModal
         isOpen={isBatchOpen}
+        isAnalyzing={isAnalyzing}
+        isCancellationRequested={batchCancellationRequested}
         total={batchTotal}
         current={batchCurrent}
         currentFileName={currentBatchFile}
@@ -1154,9 +1399,16 @@ export default function App() {
           setBatchPaused(paused);
         }}
         onCancel={() => {
-          batchCancelRef.current = true;
+          if (isAnalyzing) {
+            batchCancelRef.current = true;
+            batchPauseRef.current = false;
+            setBatchPaused(false);
+            setBatchCancellationRequested(true);
+            setBatchStage('Cancelling after the current sample.');
+            return;
+          }
           setIsBatchOpen(false);
-          setIsAnalyzing(false);
+          setBatchCancellationRequested(false);
         }}
       />
 
@@ -1179,6 +1431,25 @@ export default function App() {
           lineNumber: index + 1,
         } satisfies ParsedOtoEntry] : [])}
         onSaveMatches={handleReclistMatches}
+      />
+
+      <VoicebankPackageModal
+        isOpen={isVoicebankPackageOpen}
+        onClose={() => setIsVoicebankPackageOpen(false)}
+        metadata={voicebankMetadata}
+        files={files}
+        onMetadataChange={setVoicebankMetadata}
+        onPackage={handlePackageVoicebank}
+      />
+
+      <CloseProjectModal
+        isOpen={pendingCloseAction !== null}
+        action={pendingCloseAction || 'exit'}
+        isSaving={isSavingBeforeClose}
+        error={closeSaveError}
+        onSave={() => { void handleCloseChoice('save'); }}
+        onDiscard={() => { void handleCloseChoice('discard'); }}
+        onCancel={() => { void handleCloseChoice('cancel'); }}
       />
     </div>
   );

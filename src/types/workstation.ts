@@ -86,9 +86,20 @@ export interface AudioFileItem {
   phonemes?: DiffSingerPhoneme[]; // For DiffSinger
   lyrics?: string;     // Transcription or lyric text
   engineResults?: Record<string, EngineResultSummary>;
+  starred?: boolean;
+  done?: boolean;
+  tag?: string;
+  note?: string;
   issues: ValidationIssue[];
   lastModified: number;
   userModified: boolean;
+}
+
+export interface VoicebankMetadata {
+  characterName: string;
+  author: string;
+  version: string;
+  readme: string;
 }
 
 export type ProcessingMode = 'local_only' | 'prefer_local' | 'online_fallback';

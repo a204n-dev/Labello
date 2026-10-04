@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useId, useRef } from 'react';
 import { X } from 'lucide-react';
 
 export interface ModalProps {
@@ -34,6 +34,7 @@ export const Modal: React.FC<ModalProps> = ({
   size = 'md',
   showCloseButton = true,
 }) => {
+  const modalId = useId();
   const overlayRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const previousActiveElement = useRef<HTMLElement | null>(null);
@@ -51,6 +52,7 @@ export const Modal: React.FC<ModalProps> = ({
   }, [isOpen]);
 
   useEffect(() => {
+    if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
       if (e.key === 'Tab') {
@@ -84,8 +86,8 @@ export const Modal: React.FC<ModalProps> = ({
       onClick={handleOverlayClick}
       role="dialog"
       aria-modal="true"
-      aria-labelledby={title ? 'modal-title' : undefined}
-      aria-describedby={description ? 'modal-description' : undefined}
+      aria-labelledby={title ? `${modalId}-title` : undefined}
+      aria-describedby={description ? `${modalId}-description` : undefined}
     >
       <div
         ref={contentRef}
@@ -100,8 +102,8 @@ export const Modal: React.FC<ModalProps> = ({
               </div>
             )}
             <div>
-              <h2 id="modal-title" className="text-sm font-bold text-text-primary">{title}</h2>
-              {description && <p id="modal-description" className="text-xs text-text-muted">{description}</p>}
+              <h2 id={`${modalId}-title`} className="text-sm font-bold text-text-primary">{title}</h2>
+              {description && <p id={`${modalId}-description`} className="text-xs text-text-muted">{description}</p>}
             </div>
           </div>
           {showCloseButton && (

@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import { analyzeAcousticFeatures } from '../src/services/dsp/spectralAnalysis';
 import { AcousticEngine } from '../src/services/engines/acousticEngine';
 import { generateOtoFromFeatures } from '../src/services/oto/otoGenerator';
+import { generateOtoIniContent } from '../src/services/oto/otoExporter';
+import { romajiToHiragana } from '../src/services/oto/japaneseKana';
 import { JAPANESE_VOICEBANK_PROFILES } from '../src/services/oto/otoProfiles';
 import { validateOto } from '../src/services/oto/otoValidator';
 
@@ -16,6 +18,33 @@ function makeBuffer(samples: Float32Array, sampleRate = 16000): AudioBuffer {
 }
 
 async function run() {
+  assert.equal(romajiToHiragana('byo'), 'びょ');
+  assert.equal(romajiToHiragana('a_byo'), 'あ びょ');
+  assert.equal(romajiToHiragana('a_ka'), 'あ か');
+  assert.equal(romajiToHiragana('- ka'), '- か');
+  assert.equal(romajiToHiragana('a k'), 'あ k');
+  assert.equal(romajiToHiragana('gakkou'), 'がっこう');
+  assert.equal(romajiToHiragana("shinbun"), 'しんぶん');
+  assert.equal(romajiToHiragana('カタカナ'), 'かたかな');
+  assert.equal(romajiToHiragana('voice_001'), 'voice_001');
+
+  const kanaOto = generateOtoIniContent([{
+    id: 'kana',
+    name: 'byo.wav',
+    sizeBytes: 1,
+    durationMs: 500,
+    sampleRate: 44100,
+    channels: 1,
+    status: 'verified',
+    confidence: 99,
+    alias: 'びょ',
+    oto: { offsetMs: 10, overlapMs: 20, preutteranceMs: 30, fixedMs: 40, cutoffMs: -50 },
+    issues: [],
+    lastModified: 0,
+    userModified: false,
+  }], { lineEnding: 'CRLF', encoding: 'UTF-8', includeComments: false });
+  assert.ok(kanaOto.includes('byo.wav=びょ,10,40,-50,30,20'));
+
   const sampleRate = 16000;
   const samples = new Float32Array(sampleRate);
   for (let i = 1600; i < 14400; i++) {
@@ -61,7 +90,7 @@ async function run() {
   assert.ok(cvvc.otoParameters!.overlapMs < cv.otoParameters!.overlapMs);
   assert.ok(vcv.otoParameters!.overlapMs > cv.otoParameters!.overlapMs);
 
-  console.log('Phase 6 tests: robust UTAU acoustic boundaries and profile-aware OTO estimates passed');
+  console.log('Phase 6 tests: Japanese kana aliases, OTO export, robust boundaries, and profile-aware estimates passed');
 }
 
 run().catch(err => {

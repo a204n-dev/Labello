@@ -68,7 +68,7 @@ export const ModelDiagnosticsModal: React.FC<ModelDiagnosticsModalProps> = ({
       >
         <header className="flex shrink-0 items-start justify-between gap-4 border-b border-slate-800 bg-slate-950 px-5 py-4">
           <div className="flex min-w-0 items-start gap-3">
-            <Wrench className="mt-0.5 h-4 w-4 shrink-0 text-indigo-300" />
+            <Wrench className="mt-0.5 h-4 w-4 shrink-0 text-blue-300" />
             <div className="min-w-0">
               <h2 id="engine-status-title" className="text-sm font-semibold text-white">Engine status</h2>
               <p className="mt-1 max-w-xl text-xs leading-5 text-slate-400">
@@ -80,7 +80,7 @@ export const ModelDiagnosticsModal: React.FC<ModelDiagnosticsModalProps> = ({
             type="button"
             onClick={onClose}
             aria-label="Close engine status"
-            className="shrink-0 rounded p-1 text-slate-400 hover:bg-slate-800 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+            className="shrink-0 rounded p-1 text-slate-400 hover:bg-slate-800 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
           >
             <X className="h-4 w-4" />
           </button>
@@ -89,7 +89,7 @@ export const ModelDiagnosticsModal: React.FC<ModelDiagnosticsModalProps> = ({
         <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-5 py-4">
           <section aria-labelledby="hardware-title">
             <h3 id="hardware-title" className="flex items-center gap-2 text-xs font-semibold text-slate-300">
-              <Cpu className="h-4 w-4 text-indigo-300" />
+              <Cpu className="h-4 w-4 text-blue-300" />
               System
             </h3>
             {loadingHw ? (
@@ -144,7 +144,7 @@ export const ModelDiagnosticsModal: React.FC<ModelDiagnosticsModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="h-8 rounded-md bg-indigo-500 px-3 text-xs font-semibold text-white transition-colors hover:bg-indigo-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
+            className="h-8 rounded-md bg-blue-500 px-3 text-xs font-semibold text-white transition-colors hover:bg-blue-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
           >
             Close
           </button>

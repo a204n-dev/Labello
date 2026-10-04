@@ -7,9 +7,14 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Release version tag (e.g. v1.0.0)'
-        required: false
-        default: 'v1.0.1'
+        description: 'Release version tag'
+        required: true
+        default: 'v0.1.0-beta.1'
+      prerelease:
+        description: 'Publish as a beta / prerelease'
+        type: boolean
+        required: true
+        default: true
 
 permissions:
   contents: write
@@ -30,7 +35,7 @@ jobs:
 
       - name: Set app version from release tag
         env:
-          RELEASE_TAG: ${{ github.event.inputs.version || github.ref_name }}
+          RELEASE_TAG: ${{ inputs.version || github.ref_name }}
         shell: bash
         run: |
           VERSION="${RELEASE_TAG#v}"
@@ -60,16 +65,41 @@ jobs:
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RELEASE_TAG: ${{ github.event.inputs.version || github.ref_name }}
+          RELEASE_TAG: ${{ inputs.version || github.ref_name }}
+          MANUAL_PRERELEASE: ${{ inputs.prerelease }}
         shell: bash
         run: |
           TAG="$RELEASE_TAG"
-          NOTES="Labello desktop release for Windows. Download the installer or portable executable and launch it directly; a browser is not required."
+          if [[ "$TAG" == *-* ]]; then
+            PRERELEASE=true
+          else
+            PRERELEASE=false
+          fi
+          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
+            PRERELEASE="$MANUAL_PRERELEASE"
+          fi
+          if [[ "$PRERELEASE" == "true" ]]; then
+            RELEASE_TITLE="Labello $TAG — Beta Test"
+            NOTES="Beta test build of Labello for Windows. This is an early release; review project saves and exported voicebank or dataset files before using them as production data. Download the installer or portable executable and launch it directly; a browser is not required."
+          else
+            RELEASE_TITLE="Labello $TAG — Native Desktop App"
+            NOTES="Labello desktop release for Windows. Download the installer or portable executable and launch it directly; a browser is not required."
+          fi
 
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" release/*.exe release/*.blockmap release/latest.yml release/checksums-sha256.txt --clobber
           else
-            gh release create "$TAG" release/*.exe release/*.blockmap release/latest.yml release/checksums-sha256.txt \
-              --title "Labello $TAG — Native Desktop App" \
+            RELEASE_ARGS=(
+              "$TAG"
+              release/*.exe
+              release/*.blockmap
+              release/latest.yml
+              release/checksums-sha256.txt
+              --title "$RELEASE_TITLE"
               --notes "$NOTES"
+            )
+            if [[ "$PRERELEASE" == "true" ]]; then
+              RELEASE_ARGS+=(--prerelease)
+            fi
+            gh release create "${RELEASE_ARGS[@]}"
           fi

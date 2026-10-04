@@ -16,6 +16,7 @@ export function validateDatasetHealth(files: AudioFileItem[], mode: WorkstationM
   let totalDurationMs = 0;
 
   const seenFileNames = new Set<string>();
+  const seenAliases = new Set<string>();
 
   for (const file of files) {
     let fileHasIssue = false;
@@ -48,27 +49,33 @@ export function validateDatasetHealth(files: AudioFileItem[], mode: WorkstationM
     }
 
     // Check missing audio
-    if (!file.audioBuffer && file.durationMs <= 0) {
+    if (!file.audioBuffer || file.durationMs <= 0) {
       issues.push({
         id: `missing_audio_${file.id}`,
         code: 'MISSING_AUDIO',
         severity: 'error',
-        message: `Audio buffer is missing or zero-length for ${file.name}`,
+        message: `Audio is unavailable or zero-length for ${file.name}. Re-import the source recording to edit or export it.`,
         fileId: file.id,
       });
       fileHasIssue = true;
     }
 
-    // Check audio clipping if peaks are available
     if (file.waveformPeaks) {
-      let isClipped = false;
+      let peakLevel = 0;
       for (let i = 0; i < file.waveformPeaks.length; i++) {
-        if (Math.abs(file.waveformPeaks[i]) >= 0.999) {
-          isClipped = true;
-          break;
-        }
+        peakLevel = Math.max(peakLevel, Math.abs(file.waveformPeaks[i]));
       }
-      if (isClipped) {
+      if (peakLevel <= 0.0001) {
+        issues.push({
+          id: `silent_${file.id}`,
+          code: 'SILENT_AUDIO',
+          severity: 'warning',
+          message: `No meaningful audio signal was detected in ${file.name}.`,
+          fileId: file.id,
+        });
+        fileHasIssue = true;
+      }
+      if (peakLevel >= 0.999) {
         clippedCount++;
         issues.push({
           id: `clipped_${file.id}`,
@@ -77,10 +84,24 @@ export function validateDatasetHealth(files: AudioFileItem[], mode: WorkstationM
           message: `Digital clipping / peak saturation detected in ${file.name}`,
           fileId: file.id,
         });
+        fileHasIssue = true;
       }
     }
 
     if (mode === 'utau') {
+      const canonicalAlias = (file.alias || '').trim().toLocaleLowerCase().replace(/[\s_-]+/g, '');
+      if (canonicalAlias && seenAliases.has(canonicalAlias)) {
+        issues.push({
+          id: `duplicate_alias_${file.id}`,
+          code: 'DUPLICATE_ALIAS',
+          severity: 'warning',
+          message: `Another recording already uses the alias "${file.alias}".`,
+          fileId: file.id,
+        });
+        fileHasIssue = true;
+      }
+      if (canonicalAlias) seenAliases.add(canonicalAlias);
+
       // Validate UTAU OTO
       totalLabels++;
       if (!file.oto) {
@@ -168,6 +189,18 @@ export function validateDatasetHealth(files: AudioFileItem[], mode: WorkstationM
               code: 'EMPTY_PHONEME_LABEL',
               severity: 'error',
               message: `Empty phoneme label at ${p.startMs}ms in ${file.name}`,
+              fileId: file.id,
+              regionId: p.id,
+            });
+            fileHasIssue = true;
+          }
+
+          if (p.startMs < 0 || p.endMs > file.durationMs + 1) {
+            issues.push({
+              id: `orphaned_phoneme_${p.id}`,
+              code: 'ORPHANED_PHONEME_BOUNDARY',
+              severity: 'error',
+              message: `Phoneme "${p.phoneme}" falls outside the ${file.durationMs}ms recording.`,
               fileId: file.id,
               regionId: p.id,
             });

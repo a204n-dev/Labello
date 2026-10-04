@@ -53,7 +53,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
         ref={triggerRef}
         type="button"
         onClick={toggle}
-        className="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-bg-tertiary border border-border-subtle hover:border-border-strong transition-colors flex items-center gap-1.5"
+        className="inline-flex min-h-8 items-center gap-1.5 rounded-md border border-border-default bg-bg-tertiary px-2.5 text-xs font-medium text-text-primary transition-colors hover:bg-bg-hover active:bg-bg-elevated"
         aria-haspopup="true"
         aria-expanded={isOpen}
       >
@@ -64,7 +64,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
       {isOpen && (
         <div
           ref={dropdownRef}
-          className={`absolute ${align === 'right' ? 'right-0' : 'left-0'} top-full z-50 mt-1 ${width} bg-bg-secondary border border-border-default rounded-lg shadow-xl py-1 text-xs ${className}`}
+          className={`absolute ${align === 'right' ? 'right-0' : 'left-0'} top-full z-50 mt-1 ${width} bg-bg-tertiary border border-border-default rounded-md shadow-xl py-1 text-xs ${className}`}
           role="menu"
         >
           {items.map((item, index) => (
@@ -72,7 +72,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
               <button
                 onClick={() => { item.onClick(); setIsOpen(false); }}
                 disabled={item.disabled}
-                className={`w-full text-left px-3 py-1.5 hover:bg-bg-tertiary transition-colors flex items-center gap-2 ${
+                className={`w-full min-h-8 text-left px-3 py-1.5 hover:bg-bg-hover active:bg-bg-elevated transition-colors flex items-center gap-2 ${
                   item.disabled ? 'opacity-50 cursor-not-allowed' : 'text-text-primary'
                 } ${item.danger ? 'text-state-error-text' : ''}`}
                 role="menuitem"

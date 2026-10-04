@@ -23,10 +23,24 @@ interface DesktopUpdateStatus {
   message?: string;
 }
 
+interface DesktopVoicebankPackageRequest {
+  name: string;
+  author: string;
+  version: string;
+  readme: string;
+  otoContent: string;
+  encoding: 'Shift-JIS' | 'UTF-8' | 'UTF-8-BOM';
+  audioFiles: Array<{ name: string; token: string }>;
+  imageToken?: string;
+  imageName?: string;
+}
+
 interface LabelloDesktopApi {
   openAudioFiles(): Promise<DesktopAudioFile[]>;
   openAudioFolder(): Promise<DesktopAudioFile[]>;
+  openLabelFiles(): Promise<DesktopAudioFile[]>;
   registerAudioFile(file: File): Promise<DesktopAudioFile>;
+  registerLocalFile(file: File): Promise<DesktopAudioFile>;
   readAudioFile(token: string): Promise<Uint8Array>;
   getHardwareInfo(): Promise<{
     platform: string;
@@ -42,6 +56,10 @@ interface LabelloDesktopApi {
   saveExport(fileName: string, contents: string, encoding: 'Shift-JIS' | 'UTF-8' | 'UTF-8-BOM'): Promise<{ filePath: string } | null>;
   saveProject(project: object, assets: Array<{ id: string; token?: string }>): Promise<{ filePath: string; missingAudio: string[] } | null>;
   openProject(): Promise<DesktopProjectResult | null>;
+  packageVoicebank(request: DesktopVoicebankPackageRequest): Promise<{ folderPath: string } | null>;
+  setProjectOpen(isOpen: boolean): Promise<void>;
+  respondToCloseRequest(shouldClose: boolean): Promise<void>;
+  onCloseRequested(callback: () => void): () => void;
   checkForUpdates(): Promise<void>;
   downloadUpdate(): Promise<void>;
   installUpdate(): Promise<void>;

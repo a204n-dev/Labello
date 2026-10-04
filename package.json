@@ -15,7 +15,7 @@
     "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
     "dist:win": "npm run build && electron-builder --win nsis portable --config electron-builder.json --publish never",
     "lint": "tsc --noEmit",
-    "test": "tsx tests/phase2.test.ts && tsx tests/phase3.test.ts && tsx tests/phase4.test.ts && tsx tests/phase5.test.ts && tsx tests/phase6.test.ts"
+    "test": "tsx tests/phase2.test.ts && tsx tests/phase3.test.ts && tsx tests/phase4.test.ts && tsx tests/phase5.test.ts && tsx tests/phase6.test.ts && tsx tests/phase7.test.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

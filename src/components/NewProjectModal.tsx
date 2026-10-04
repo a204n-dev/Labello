@@ -22,9 +22,9 @@ const projectOptions: Array<{
 }> = [
   {
     mode: 'utau',
-    title: 'UTAU Auto-OTO',
-    subtitle: 'Japanese voicebank timing',
-    description: 'Prepare a voicebank using Japanese CV, CVVC, or VCV recordings.',
+    title: 'UTAU Voice Bank Maker',
+    subtitle: 'Author and package a voicebank',
+    description: 'Review timing, aliases, and reclist coverage for Japanese CV, CVVC, or VCV recordings, then package the voicebank.',
     icon: <Mic2 className="h-5 w-5" />,
   },
   {

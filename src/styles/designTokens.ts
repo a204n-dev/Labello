@@ -1,64 +1,64 @@
 /**
- * Design Tokens - Single source of truth for UI styling
- * Import from here instead of hardcoding values
+ * Legacy token exports retained for older components.
+ * The Primer semantic tokens in globals.css are the visual source of truth.
  */
 
 // Color palette - semantic naming
 export const colors = {
   // Background layers
   bg: {
-    primary: '#020617',      // slate-950
-    secondary: '#0f172a',    // slate-900
-    tertiary: '#1e293b',     // slate-800
-    elevated: '#334155',     // slate-700
-    hover: '#475569',        // slate-600
+    primary: '#0d1117',
+    secondary: '#010409',
+    tertiary: '#151b23',
+    elevated: '#3d444d',
+    hover: '#212830',
   },
   // Borders
   border: {
-    subtle: '#1e293b',       // slate-800
-    default: '#334155',      // slate-700
-    strong: '#475569',       // slate-600
-    focus: '#6366f1',        // indigo-500
+    subtle: '#3d444d66',
+    default: '#3d444d',
+    strong: '#656c76',
+    focus: '#4493f8',
   },
   // Text
   text: {
-    primary: '#f1f5f9',      // slate-100
-    secondary: '#94a3b8',    // slate-400
-    muted: '#64748b',        // slate-500
-    inverse: '#0f172a',      // slate-900
+    primary: '#f0f6fc',
+    secondary: '#c9d1d9',
+    muted: '#9198a1',
+    inverse: '#ffffff',
   },
   // Semantic states
   state: {
     success: {
-      bg: '#064e3b',         // emerald-950
-      text: '#34d399',       // emerald-300
-      border: '#065f46',     // emerald-800
+      bg: '#12261e',
+      text: '#3fb950',
+      border: '#238636',
     },
     warning: {
-      bg: '#78350f',         // amber-950
-      text: '#fbbf24',       // amber-300
-      border: '#92400e',     // amber-800
+      bg: '#272115',
+      text: '#d29922',
+      border: '#9e6a03',
     },
     error: {
-      bg: '#7f1d1d',         // rose-950
-      text: '#f87171',       // rose-300
-      border: '#991b1b',     // rose-800
+      bg: '#2d1418',
+      text: '#f85149',
+      border: '#da3633',
     },
     info: {
-      bg: '#1e3a8a',         // blue-950
-      text: '#60a5fa',       // blue-300
-      border: '#1e40af',     // blue-800
+      bg: '#111d2f',
+      text: '#4493f8',
+      border: '#1f6feb',
     },
     accent: {
-      bg: '#312e81',         // indigo-950
-      text: '#a5b4fc',       // indigo-300
-      border: '#3730a3',     // indigo-800
+      bg: '#211a2e',
+      text: '#a371f7',
+      border: '#6e40c9',
     },
   },
   // Mode-specific
   mode: {
-    utau: '#6366f1',         // indigo-500
-    diffsinger: '#ec4899',   // pink-500
+    utau: '#4493f8',
+    diffsinger: '#4493f8',
   },
 } as const;
 
@@ -174,19 +174,19 @@ export const sizing = {
 } as const;
 
 // Focus ring
-export const focusRing = `outline-none ring-2 ring-offset-2 ring-offset-slate-950 ring-indigo-500`;
+export const focusRing = `outline-none ring-2 ring-offset-2 ring-offset-slate-950 ring-blue-500`;
 
 // Common component variants
 export const variants = {
   button: {
-    primary: `bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white shadow-sm`,
+    primary: `bg-blue-500 hover:bg-blue-400 active:bg-blue-600 text-white`,
     secondary: `bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700`,
     ghost: `bg-transparent hover:bg-slate-800 text-slate-300`,
     danger: `bg-rose-600 hover:bg-rose-500 active:bg-rose-700 text-white`,
     success: `bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white`,
   },
   input: `bg-slate-900 border border-slate-700 text-slate-100 placeholder-slate-500 
-          focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500`,
+          focus:border-blue-500 focus:ring-1 focus:ring-blue-500`,
   panel: `bg-slate-950 border-l border-slate-800`,
   card: `bg-slate-900 border border-slate-800 rounded-lg`,
 } as const;

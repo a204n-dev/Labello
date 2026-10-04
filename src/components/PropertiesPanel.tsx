@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { AudioFileItem, OtoParameters, VoicebankProfile, WorkstationMode } from '../types/workstation';
 import { validateOto } from '../services/oto/otoValidator';
+import { romajiToHiragana } from '../services/oto/japaneseKana';
 
 interface PropertiesPanelProps {
   activeFile: AudioFileItem | null;
@@ -24,6 +25,7 @@ interface PropertiesPanelProps {
   onUpdateOto: (oto: OtoParameters) => void;
   onUpdateAlias: (alias: string) => void;
   onUpdateLyrics: (lyrics: string) => void;
+  onUpdateFileNotes: (updates: { tag?: string; note?: string }) => void;
   onUpdatePhonemeText: (phonemeId: string, text: string) => void;
   onAcceptFileOrRegion: () => void;
   onReanalyzeCurrent: () => void;
@@ -42,6 +44,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   onUpdateOto,
   onUpdateAlias,
   onUpdateLyrics,
+  onUpdateFileNotes,
   onUpdatePhonemeText,
   onAcceptFileOrRegion,
   onReanalyzeCurrent,
@@ -108,9 +111,9 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
 
   if (!activeFile) {
     return (
-      <aside className="bg-bg-secondary border-l border-border-subtle flex flex-col select-none text-text-secondary overflow-hidden" style={{ width: `${width}px`, minWidth: '240px', maxWidth: '480px' }}>
+      <aside id="properties-panel" className="bg-bg-secondary border-l border-border-subtle flex flex-col select-none text-text-secondary overflow-hidden" style={{ width: `${width}px`, minWidth: '240px', maxWidth: '480px' }}>
         <div className="flex items-center justify-between p-3 border-b border-border-subtle/80">
-          <span className="text-xs font-semibold text-text-muted uppercase tracking-wider">Acoustic Properties</span>
+          <span className="text-xs font-semibold text-text-primary">Properties</span>
           <button onClick={onToggle} className="p-1.5 text-text-secondary hover:text-text-primary hover:bg-bg-tertiary rounded-lg transition-colors" title="Hide Properties (P)">
             <ChevronRight className="w-4 h-4" />
           </button>
@@ -127,7 +130,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   const isMedium = activeFile.confidence >= 70 && activeFile.confidence < 90;
 
   return (
-    <aside className="bg-bg-secondary border-l border-border-subtle flex flex-row shrink-0 select-none text-text-secondary overflow-hidden" style={{ width: `${width}px`, minWidth: '240px', maxWidth: '480px' }}>
+    <aside id="properties-panel" className="bg-bg-secondary border-l border-border-subtle flex flex-row shrink-0 select-none text-text-secondary overflow-hidden" style={{ width: `${width}px`, minWidth: '240px', maxWidth: '480px' }}>
       {/* Resize Handle */}
       <div
         className="w-1 h-full shrink-0 cursor-col-resize hover:bg-border-focus/50 transition-colors flex items-center justify-center"
@@ -144,7 +147,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
         {/* Panel Header */}
         <div className="p-3 border-b border-border-subtle/80 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-text-muted uppercase tracking-wider">Acoustic Properties</span>
+            <span className="text-xs font-semibold text-text-primary">Properties</span>
             <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${
               isHigh ? 'bg-state-success-bg text-state-success-text border-state-success-border' :
               isMedium ? 'bg-state-warning-bg text-state-warning-text border-state-warning-border' :
@@ -179,8 +182,16 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
 
             {mode === 'utau' ? (
               <div>
-                <label className="text-[10px] uppercase font-semibold text-text-muted">UTAU Alias</label>
-                <input id="alias-input" type="text" value={activeFile.alias || ''} onChange={(e) => onUpdateAlias(e.target.value)} placeholder="e.g. ka, - ka, a ka" className="w-full mt-1 bg-bg-tertiary border border-border-subtle rounded-lg px-2 py-1 text-xs font-mono text-text-primary focus:outline-none focus:border-border-focus transition-colors" />
+                <label htmlFor="alias-input" className="text-[10px] uppercase font-semibold text-text-muted">UTAU Alias · Hiragana or romaji</label>
+                <input id="alias-input" type="text" value={activeFile.alias || ''} onChange={(e) => onUpdateAlias(e.target.value)} placeholder="e.g. か, - か, あ か" className="w-full mt-1 bg-bg-tertiary border border-border-subtle rounded-lg px-2 py-1 text-xs font-mono text-text-primary focus:outline-none focus:border-border-focus transition-colors" />
+                <div className="mt-1 flex items-center justify-between gap-2">
+                  <p className="text-[10px] text-text-muted">This alias is written to oto.ini. Correct it here, then adjust timing markers before accepting.</p>
+                  {romajiToHiragana(activeFile.alias || '') !== (activeFile.alias || '') && (
+                    <button type="button" onClick={() => onUpdateAlias(romajiToHiragana(activeFile.alias || ''))} className="shrink-0 rounded px-1.5 py-1 text-[10px] font-medium text-mode-utau hover:bg-mode-utau/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus">
+                      Convert to Hiragana
+                    </button>
+                  )}
+                </div>
               </div>
             ) : (
               <div className="space-y-3">
@@ -202,6 +213,30 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                 </div>
               </div>
             )}
+          </div>
+
+          <div className="grid grid-cols-1 gap-2 border-b border-border-subtle/80 pb-3">
+            <label className="text-[10px] font-semibold uppercase text-text-muted">
+              Tag
+              <input
+                value={activeFile.tag || ''}
+                maxLength={48}
+                onChange={event => onUpdateFileNotes({ tag: event.target.value })}
+                placeholder="e.g. needs retake"
+                className="mt-1 w-full rounded border border-border-subtle bg-bg-primary px-2 py-1.5 text-xs text-text-primary placeholder:text-text-muted focus:border-border-focus focus:outline-none"
+              />
+            </label>
+            <label className="text-[10px] font-semibold uppercase text-text-muted">
+              Note
+              <textarea
+                value={activeFile.note || ''}
+                maxLength={500}
+                rows={2}
+                onChange={event => onUpdateFileNotes({ note: event.target.value })}
+                placeholder="Private project note"
+                className="mt-1 w-full resize-y rounded border border-border-subtle bg-bg-primary px-2 py-1.5 text-xs normal-case text-text-primary placeholder:text-text-muted focus:border-border-focus focus:outline-none"
+              />
+            </label>
           </div>
 
           {/* OTO Parameters */}
