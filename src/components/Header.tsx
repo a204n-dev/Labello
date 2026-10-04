@@ -126,19 +126,13 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <>
-      <header className="h-[var(--header-height)] bg-bg-secondary border-b border-border-subtle px-4 flex items-center justify-between select-none text-text-primary" onKeyDown={handleKeyDown}>
+      <header className="min-h-[var(--header-height)] bg-bg-secondary border-b border-border-subtle px-3 py-2 flex flex-wrap items-center gap-x-4 gap-y-2 2xl:flex-nowrap 2xl:justify-between 2xl:px-4 2xl:py-0 select-none text-text-primary" onKeyDown={handleKeyDown}>
         {/* Left: Brand, Mode, Profile */}
-        <div className="flex items-center gap-3 min-w-0 flex-1">
+        <div className="flex items-center gap-3 min-w-0 flex-1 basis-full 2xl:basis-auto">
           <div className="flex items-center gap-2.5 shrink-0">
             <img src="/labello-icon.png" alt="" className="w-8 h-8 rounded-lg object-cover border border-border-subtle" />
-            <div className="hidden sm:block">
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-sm tracking-tight text-text-primary">Labello</span>
-                <a href="https://github.com/sdercolin/vlabeler" target="_blank" rel="noreferrer" className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-accent-bg text-accent-text border border-accent-border">
-                  vLabeler + LabelMakr
-                </a>
-              </div>
-              <p className="text-xs text-text-muted leading-none">Vocal dataset workstation</p>
+            <div className="hidden sm:block font-semibold text-sm tracking-tight text-text-primary">
+              Labello
             </div>
           </div>
 
@@ -162,7 +156,7 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Center: Undo/Redo, View Toggles, Status */}
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="order-2 flex min-w-0 flex-1 flex-wrap items-center justify-start gap-2 shrink-0 2xl:order-none 2xl:justify-center">
           {/* Undo/Redo */}
           <div className="flex items-center bg-bg-tertiary border border-border-subtle rounded-lg p-1">
             <button onClick={onUndo} disabled={!canUndo} title="Undo (Ctrl+Z)" className="p-1.5 text-text-secondary hover:text-text-primary disabled:opacity-30 disabled:pointer-events-none rounded transition-colors"><RotateCcw className="w-4 h-4" /></button>
@@ -193,7 +187,7 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Right: Actions, File Menu, View Menu, Help */}
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="order-3 ml-auto flex shrink-0 flex-wrap items-center justify-end gap-1.5 2xl:order-none">
           {/* Primary Action */}
           <button onClick={onBatchAnalyze} disabled={isAnalyzing} className="flex items-center gap-1.5 bg-mode-utau hover:bg-mode-utau/90 active:bg-mode-utau text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-all shadow-sm shadow-mode-utau/20 disabled:opacity-50">
             <Sparkles className={`w-3.5 h-3.5 ${isAnalyzing ? 'animate-spin' : ''}`} />
@@ -240,9 +234,7 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Secondary Actions */}
           <div className="flex items-center gap-1">
-            <button onClick={onLoadProject} title="Open Workspace (.vbp)" className="p-1.5 text-text-secondary hover:text-text-primary hover:bg-bg-tertiary rounded-lg transition-colors"><FolderOpen className="w-4 h-4" /></button>
-            <button onClick={onSaveProject} title="Save Workspace (.vbp) (Ctrl+S)" className="p-1.5 text-text-secondary hover:text-text-primary hover:bg-bg-tertiary rounded-lg transition-colors"><Save className="w-4 h-4" /></button>
-            <button onClick={onOpenDiagnostics} title="Hardware & Engine Diagnostics" className="p-1.5 text-text-secondary hover:text-text-primary hover:bg-bg-tertiary rounded-lg transition-colors"><Settings2 className="w-4 h-4" /></button>
+            <button onClick={onOpenDiagnostics} title="Engine availability and system information" aria-label="Engine availability and system information" className="p-1.5 text-text-secondary hover:text-text-primary hover:bg-bg-tertiary rounded-lg transition-colors"><Settings2 className="w-4 h-4" /></button>
           </div>
 
           <div className="h-5 w-px bg-border-subtle mx-1" />

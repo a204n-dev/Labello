@@ -904,6 +904,8 @@ export default function App() {
           onUpdateOto={handleUpdateOto}
           onUpdatePhoneme={handleUpdatePhoneme}
           onAcceptRegion={handleAcceptActive}
+          onOpenAudio={() => { void handleOpenAudio(); }}
+          onOpenAudioFolder={() => { void handleOpenAudio(true); }}
         />
 
         {/* Right: Acoustic & Engine Agreement Inspector */}
@@ -947,8 +949,6 @@ export default function App() {
       <ModelDiagnosticsModal
         isOpen={isDiagnosticsOpen}
         onClose={() => setIsDiagnosticsOpen(false)}
-        settings={settings}
-        onUpdateSettings={(newS) => setSettings(s => ({ ...s, ...newS }))}
       />
 
       <ExportModal

@@ -9,6 +9,8 @@ import {
   Volume2,
   Repeat,
   Crosshair,
+  Upload,
+  FolderOpen,
 } from 'lucide-react';
 import { AudioFileItem, OtoParameters, WorkstationMode } from '../types/workstation';
 import { AudioEngine } from '../services/audio/audioEngine';
@@ -25,6 +27,8 @@ interface WaveformWorkspaceProps {
   onUpdatePhoneme: (phonemeId: string, startMs: number, endMs: number) => void;
   onSplitPhoneme?: (phonemeId: string, splitAtMs: number) => void;
   onAcceptRegion?: () => void;
+  onOpenAudio?: () => void;
+  onOpenAudioFolder?: () => void;
 }
 
 type DragTarget =
@@ -46,6 +50,8 @@ export const WaveformWorkspace: React.FC<WaveformWorkspaceProps> = ({
   onUpdateOto,
   onUpdatePhoneme,
   onAcceptRegion,
+  onOpenAudio,
+  onOpenAudioFolder,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -378,10 +384,39 @@ export const WaveformWorkspace: React.FC<WaveformWorkspaceProps> = ({
 
   if (!activeFile) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center bg-slate-900 text-slate-500">
-        <Volume2 className="w-12 h-12 mb-3 text-slate-700" />
-        <p className="text-sm font-medium">Select or import an audio file to begin labeling</p>
-        <p className="text-xs mt-1 text-slate-600">File → Import Audio, or drag &amp; drop WAV / MP3 / FLAC / OGG</p>
+      <div className="flex-1 min-w-0 flex items-center justify-center bg-slate-900 px-6 py-10 text-slate-300">
+        <div className="w-full max-w-lg">
+          <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-lg border border-indigo-400/25 bg-indigo-400/10 text-indigo-300">
+            <Volume2 className="h-5 w-5" />
+          </div>
+          <h1 className="text-xl font-semibold tracking-tight text-slate-100">
+            {mode === 'utau' ? 'Start an oto project' : 'Start an audio-labeling project'}
+          </h1>
+          <p className="mt-2 max-w-md text-sm leading-6 text-slate-400">
+            {mode === 'utau'
+              ? 'Add voicebank recordings to estimate oto.ini timings, then inspect and refine each sample on the waveform.'
+              : 'Add audio recordings to create and review phoneme timing labels.'}
+          </p>
+          <div className="mt-6 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={onOpenAudio}
+              className="inline-flex h-9 items-center gap-2 rounded-md bg-indigo-500 px-3.5 text-sm font-medium text-white transition-colors hover:bg-indigo-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
+            >
+              <Upload className="h-4 w-4" />
+              Add audio files
+            </button>
+            <button
+              type="button"
+              onClick={onOpenAudioFolder}
+              className="inline-flex h-9 items-center gap-2 rounded-md border border-slate-700 bg-slate-800 px-3.5 text-sm font-medium text-slate-200 transition-colors hover:border-slate-600 hover:bg-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
+            >
+              <FolderOpen className="h-4 w-4" />
+              Open audio folder
+            </button>
+          </div>
+          <p className="mt-4 text-xs text-slate-500">WAV, FLAC, MP3 and OGG audio supported</p>
+        </div>
       </div>
     );
   }

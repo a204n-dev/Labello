@@ -4,6 +4,9 @@
  */
 import assert from 'node:assert/strict';
 import { EngineCoordinator } from '../src/services/engines/engineCoordinator';
+import { SofaEngine } from '../src/services/engines/sofaEngine';
+import { WhisperEngine } from '../src/services/engines/whisperEngine';
+import { MfaEngine } from '../src/services/engines/mfaEngine';
 import { createOtoIniBlob } from '../src/services/oto/otoExporter';
 
 function makeAudioBuffer(): AudioBuffer {
@@ -30,6 +33,15 @@ async function run() {
   assert.strictEqual(engines.find(engine => engine.id === 'mfa_aligner')?.isAvailable, false);
 
   const audio = makeAudioBuffer();
+  for (const engine of [new SofaEngine(), new WhisperEngine(), new MfaEngine()]) {
+    const result = await engine.analyzeAudio(audio, 'sample.wav', 'ka');
+    assert.strictEqual(result.isSuccessful, false);
+    assert.strictEqual(result.confidence, 0);
+    assert.strictEqual(result.otoParameters, undefined);
+    assert.strictEqual(result.phonemeVotes, undefined);
+    assert.ok(result.diagnosticNotes?.includes('cannot run'));
+  }
+
   const oto = await coordinator.runCrossVerification(audio, 'ka.wav', 'ka', 'utau');
   assert.ok(oto.verifiedOto);
   assert.ok(oto.overallConfidence < 70);

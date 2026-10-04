@@ -125,7 +125,7 @@ export const SidebarFileList: React.FC<SidebarFileListProps> = ({
 
   return (
     <aside
-      className="bg-bg-secondary border-r border-border-subtle flex flex-col select-none text-text-secondary transition-all duration-200"
+      className="bg-bg-secondary border-r border-border-subtle flex flex-row shrink-0 select-none text-text-secondary transition-all duration-200"
       style={{ width: `${width}px`, minWidth: '200px', maxWidth: '480px' }}
       onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
       onDragLeave={() => setIsDragging(false)}
