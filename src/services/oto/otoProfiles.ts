@@ -4,7 +4,7 @@ export const VOICEBANK_PROFILES: VoicebankProfile[] = [
   {
     id: 'japanese_cv',
     name: 'Japanese CV (Standard)',
-    description: 'Consonant-Vowel standard Japanese voicebank recording style (e.g. ka, ki, ku, ke, ko).',
+    description: 'Standard Japanese consonant-vowel recording style (e.g. ka, ki, ku, ke, ko).',
     language: 'Japanese',
     recordingStyle: 'CV',
     sampleStructure: '[consonant][vowel].wav',
@@ -24,8 +24,8 @@ export const VOICEBANK_PROFILES: VoicebankProfile[] = [
   },
   {
     id: 'japanese_vcv',
-    name: 'Japanese VCV (Ren continuous)',
-    description: 'Vowel-Consonant-Vowel continuous 7-mora or 5-mora strings (e.g. - ka, a ka, i ka).',
+    name: 'Japanese VCV (Continuous)',
+    description: 'Japanese vowel-consonant-vowel continuous recordings (e.g. - ka, a ka, i ka).',
     language: 'Japanese',
     recordingStyle: 'VCV',
     sampleStructure: '[vowel] [consonant][vowel]',
@@ -35,7 +35,7 @@ export const VOICEBANK_PROFILES: VoicebankProfile[] = [
   {
     id: 'japanese_cvvc',
     name: 'Japanese CVVC',
-    description: 'Separated Consonant-Vowel and Vowel-Consonant diphones for flexible synthesis.',
+    description: 'Japanese consonant-vowel and vowel-consonant transitions (e.g. ka, a k).',
     language: 'Japanese',
     recordingStyle: 'CVVC',
     sampleStructure: '[consonant][vowel] and [vowel] [consonant]',
@@ -53,6 +53,10 @@ export const VOICEBANK_PROFILES: VoicebankProfile[] = [
     expectedPhonemes: ['- k', 'k ae', 'ae t', 't -', '- s', 's ey', 'ey v'],
   },
 ];
+
+export const JAPANESE_VOICEBANK_PROFILES = VOICEBANK_PROFILES.filter(
+  profile => profile.language === 'Japanese'
+);
 
 export function getProfileById(id: string): VoicebankProfile {
   return VOICEBANK_PROFILES.find(p => p.id === id) || VOICEBANK_PROFILES[0];

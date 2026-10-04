@@ -9,7 +9,7 @@ on:
       version:
         description: 'Release version tag (e.g. v1.0.0)'
         required: false
-        default: 'v1.0.0'
+        default: 'v1.0.1'
 
 permissions:
   contents: write
@@ -27,6 +27,14 @@ jobs:
         with:
           node-version: 22
           cache: npm
+
+      - name: Set app version from release tag
+        env:
+          RELEASE_TAG: ${{ github.event.inputs.version || github.ref_name }}
+        shell: bash
+        run: |
+          VERSION="${RELEASE_TAG#v}"
+          npm version "$VERSION" --no-git-tag-version --allow-same-version
 
       - name: Install dependencies
         run: npm ci
@@ -52,15 +60,16 @@ jobs:
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ github.event.inputs.version || github.ref_name }}
         shell: bash
         run: |
-          TAG="${{ github.event.inputs.version || github.ref_name }}"
+          TAG="$RELEASE_TAG"
           NOTES="Labello desktop release for Windows. Download the installer or portable executable and launch it directly; a browser is not required."
 
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" release/*.exe release/checksums-sha256.txt --clobber
+            gh release upload "$TAG" release/*.exe release/*.blockmap release/latest.yml release/checksums-sha256.txt --clobber
           else
-            gh release create "$TAG" release/*.exe release/checksums-sha256.txt \
+            gh release create "$TAG" release/*.exe release/*.blockmap release/latest.yml release/checksums-sha256.txt \
               --title "Labello $TAG — Native Desktop App" \
               --notes "$NOTES"
           fi

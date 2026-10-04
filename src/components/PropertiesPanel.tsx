@@ -13,12 +13,13 @@ import {
   MoreVertical,
   Copy,
 } from 'lucide-react';
-import { AudioFileItem, OtoParameters, DiffSingerPhoneme, WorkstationMode } from '../types/workstation';
+import { AudioFileItem, OtoParameters, VoicebankProfile, WorkstationMode } from '../types/workstation';
 import { validateOto } from '../services/oto/otoValidator';
 
 interface PropertiesPanelProps {
   activeFile: AudioFileItem | null;
   mode: WorkstationMode;
+  profile: VoicebankProfile;
   selectedPhonemeId: string | null;
   onUpdateOto: (oto: OtoParameters) => void;
   onUpdateAlias: (alias: string) => void;
@@ -36,6 +37,7 @@ interface PropertiesPanelProps {
 export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   activeFile,
   mode,
+  profile,
   selectedPhonemeId,
   onUpdateOto,
   onUpdateAlias,
@@ -125,10 +127,10 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   const isMedium = activeFile.confidence >= 70 && activeFile.confidence < 90;
 
   return (
-    <aside className="bg-bg-secondary border-l border-border-subtle flex flex-col select-none text-text-secondary overflow-hidden" style={{ width: `${width}px`, minWidth: '240px', maxWidth: '480px' }}>
+    <aside className="bg-bg-secondary border-l border-border-subtle flex flex-row shrink-0 select-none text-text-secondary overflow-hidden" style={{ width: `${width}px`, minWidth: '240px', maxWidth: '480px' }}>
       {/* Resize Handle */}
       <div
-        className="w-1 h-full cursor-col-resize hover:bg-border-focus/50 transition-colors flex items-center justify-center"
+        className="w-1 h-full shrink-0 cursor-col-resize hover:bg-border-focus/50 transition-colors flex items-center justify-center"
         onMouseDown={handleResizeStart}
         title="Drag to resize"
         role="separator"
@@ -138,7 +140,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
       </div>
 
       {/* Panel Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
         {/* Panel Header */}
         <div className="p-3 border-b border-border-subtle/80 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -210,7 +212,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                   <SlidersHorizontal className="w-3.5 h-3.5 text-mode-utau" />
                   <span>OTO Parameters</span>
                 </span>
-                <span className="text-[10px] text-text-muted">Milliseconds (ms)</span>
+                <span className="text-[10px] text-text-muted" title={profile.description}>Japanese {profile.recordingStyle} · ms</span>
               </div>
 
               <div className="grid grid-cols-2 gap-2 text-xs">

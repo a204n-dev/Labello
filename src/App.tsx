@@ -1,7 +1,7 @@
 /**
  * Unified Vocal Labeling Workstation
  * Local-First Intelligent Vocal & Audio Labeling System (VLabeler Foundation)
- * Mode A: UTAU Smart Auto-OTO | Mode B: DiffSinger Training Dataset Alignment
+ * UTAU Auto-OTO and vocal-dataset labeling workflows
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
@@ -17,6 +17,7 @@ import { BatchProgressModal } from './components/BatchProgressModal';
 import { ReleasesModal } from './components/ReleasesModal';
 import { ImportOtoModal } from './components/ImportOtoModal';
 import { ReclistMatchModal } from './components/ReclistMatchModal';
+import { NewProjectModal } from './components/NewProjectModal';
 
 import { 
   AudioFileItem, 
@@ -30,6 +31,7 @@ import {
 import { createSyntheticVocalBuffer, extractPeaks, decodeAudioData } from './services/dsp/audioUtils';
 import { EngineCoordinator } from './services/engines/engineCoordinator';
 import { validateDatasetHealth } from './services/diffsinger/datasetValidator';
+import { getProfileById } from './services/oto/otoProfiles';
 import type { OtoComparisonResult } from './services/oto/otoUpdater';
 import type { MatchResult } from './services/reclist/reclistParser';
 interface AudioImportCandidate {
@@ -54,16 +56,8 @@ interface LabelloProject {
 
 const engineCoordinator = new EngineCoordinator();
 
-export default function App() {
-  const [mode, setMode] = useState<WorkstationMode>('utau');
-  const [profileId, setProfileId] = useState<VoicebankProfileId>('japanese_cv');
-  const [files, setFiles] = useState<AudioFileItem[]>([]);
-  const [projectName, setProjectName] = useState('Vocal Labeling Workspace');
-  const [activeFileId, setActiveFileId] = useState<string | null>(null);
-  const [selectedPhonemeId, setSelectedPhonemeId] = useState<string | null>(null);
-
-  // Settings State
-  const [settings, setSettings] = useState<ProjectSettings>({
+function createDefaultProjectSettings(): ProjectSettings {
+  return {
     processingMode: 'prefer_local',
     automationLevel: 'balanced',
     lineEnding: 'CRLF',
@@ -73,7 +67,21 @@ export default function App() {
     snapToZeroCrossings: true,
     confidenceThresholdReview: 70,
     confidenceThresholdAutoAccept: 90,
-  });
+  };
+}
+
+export default function App() {
+  const [mode, setMode] = useState<WorkstationMode>('utau');
+  const [profileId, setProfileId] = useState<VoicebankProfileId>('japanese_cv');
+  const [files, setFiles] = useState<AudioFileItem[]>([]);
+  const [projectName, setProjectName] = useState('Vocal Labeling Workspace');
+  const [projectReady, setProjectReady] = useState(false);
+  const [isNewProjectOpen, setIsNewProjectOpen] = useState(false);
+  const [activeFileId, setActiveFileId] = useState<string | null>(null);
+  const [selectedPhonemeId, setSelectedPhonemeId] = useState<string | null>(null);
+
+  // Settings State
+  const [settings, setSettings] = useState<ProjectSettings>(createDefaultProjectSettings);
 
   // UI Modal Controls
   const [isReviewOpen, setIsReviewOpen] = useState(false);
@@ -84,6 +92,9 @@ export default function App() {
   const [isReleasesOpen, setIsReleasesOpen] = useState(false);
   const [isImportOtoOpen, setIsImportOtoOpen] = useState(false);
   const [isReclistMatchOpen, setIsReclistMatchOpen] = useState(false);
+  const [updateStatus, setUpdateStatus] = useState<DesktopUpdateStatus>({ status: 'idle' });
+  const [deferredUpdateVersion, setDeferredUpdateVersion] = useState<string | null>(null);
+  const [updatePreferenceLoaded, setUpdatePreferenceLoaded] = useState(false);
 
   // Panel State
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -107,6 +118,36 @@ export default function App() {
   const historyTimerRef = useRef<number | null>(null);
   const pendingHistoryRef = useRef<AudioFileItem[] | null>(null);
   const [, setHistoryRenderTrigger] = useState(0);
+
+  useEffect(() => {
+    if (!window.labelloDesktop) {
+      setUpdatePreferenceLoaded(true);
+      return;
+    }
+    let isCurrent = true;
+    const unsubscribe = window.labelloDesktop.onUpdateStatus(setUpdateStatus);
+    window.labelloDesktop.getDeferredUpdateVersion()
+      .then(version => {
+        if (isCurrent) {
+          setDeferredUpdateVersion(version);
+          setUpdatePreferenceLoaded(true);
+        }
+      })
+      .catch(error => {
+        console.error('Could not load update preference:', error);
+        if (isCurrent) {
+          setUpdateStatus({
+            status: 'error',
+            message: `Could not load update preference: ${error instanceof Error ? error.message : String(error)}`,
+          });
+          setUpdatePreferenceLoaded(true);
+        }
+      });
+    return () => {
+      isCurrent = false;
+      unsubscribe();
+    };
+  }, []);
 
   const pushHistory = useCallback((newFiles: AudioFileItem[]) => {
     // Truncate future history if branched
@@ -158,6 +199,29 @@ export default function App() {
     historyRef.current = [];
     historyIndexRef.current = -1;
     pushHistory(nextFiles);
+  };
+
+  const handleCreateProject = (projectMode: WorkstationMode, name: string) => {
+    setMode(projectMode);
+    setProfileId('japanese_cv');
+    setFiles([]);
+    setSettings(createDefaultProjectSettings());
+    setActiveFileId(null);
+    setSelectedPhonemeId(null);
+    setProjectName(name);
+    setImportErrors([]);
+    setSidebarOpen(true);
+    setPropertiesOpen(true);
+    replaceHistory([]);
+    setProjectReady(true);
+    setIsNewProjectOpen(false);
+  };
+
+  const handleNewProject = () => {
+    if (files.length > 0 && !window.confirm('Starting a new project will close the current samples and labels. Save this project first if you need to keep it. Continue?')) {
+      return;
+    }
+    setIsNewProjectOpen(true);
   };
 
   const canUndo = historyIndexRef.current > 0;
@@ -671,7 +735,8 @@ export default function App() {
       target.audioBuffer,
       target.name,
       target.alias || target.lyrics || 'a',
-      mode
+    mode,
+    { profileId }
     );
 
     const updated = files.map(f => {
@@ -774,6 +839,8 @@ export default function App() {
     if (project.settings) setSettings(current => ({ ...current, ...project.settings }));
     replaceHistory(restored);
     setImportErrors(errors);
+    setProjectReady(true);
+    setIsNewProjectOpen(false);
   };
 
   const handleLoadProject = async () => {
@@ -803,6 +870,59 @@ export default function App() {
     input.click();
   };
 
+  const handleCheckForUpdates = async () => {
+    if (!window.labelloDesktop) {
+      setUpdateStatus({ status: 'manual', message: 'Updates are available from the GitHub releases page.' });
+      return;
+    }
+    try {
+      await window.labelloDesktop.checkForUpdates();
+    } catch (error) {
+      setUpdateStatus({ status: 'error', message: error instanceof Error ? error.message : String(error) });
+    }
+  };
+
+  const handleDownloadUpdate = async () => {
+    if (!window.labelloDesktop) return;
+    try {
+      await window.labelloDesktop.downloadUpdate();
+    } catch (error) {
+      setUpdateStatus({ status: 'error', message: error instanceof Error ? error.message : String(error) });
+    }
+  };
+
+  const handleInstallUpdate = async () => {
+    if (!window.labelloDesktop) return;
+    try {
+      await window.labelloDesktop.installUpdate();
+    } catch (error) {
+      setUpdateStatus({ status: 'error', message: error instanceof Error ? error.message : String(error) });
+    }
+  };
+
+  const handleOpenGitHubReleases = async () => {
+    if (!window.labelloDesktop) {
+      window.open('https://github.com/a204n-dev/Labello/releases/latest', '_blank', 'noopener,noreferrer');
+      return;
+    }
+    try {
+      await window.labelloDesktop.openReleasesPage();
+    } catch (error) {
+      setUpdateStatus({ status: 'error', message: error instanceof Error ? error.message : String(error) });
+    }
+  };
+
+  const handleDeferUpdate = async () => {
+    const version = updateStatus.version;
+    if (!version || !window.labelloDesktop) return;
+    try {
+      await window.labelloDesktop.deferUpdate(version);
+      setDeferredUpdateVersion(version);
+    } catch (error) {
+      setUpdateStatus({ status: 'error', message: `Could not save update preference: ${error instanceof Error ? error.message : String(error)}` });
+    }
+  };
+
   useEffect(() => {
     const handleProjectShortcut = (event: KeyboardEvent) => {
       if (['INPUT', 'SELECT', 'TEXTAREA'].includes((event.target as HTMLElement).tagName)) return;
@@ -820,15 +940,21 @@ export default function App() {
 
   // Active File & Dataset Health Report
   const activeFile = files.find(f => f.id === activeFileId) || null;
+  const activeProfile = getProfileById(profileId);
   const healthReport = validateDatasetHealth(files, mode);
   const reviewCount = files.filter(f => f.confidence < 70 || f.issues.length > 0).length;
+  const updateAvailable = updatePreferenceLoaded &&
+    (updateStatus.status === 'available' || updateStatus.status === 'downloaded') &&
+    !!updateStatus.version &&
+    updateStatus.version !== deferredUpdateVersion;
 
   return (
-    <div className="flex flex-col h-screen w-screen bg-slate-950 font-sans antialiased text-slate-100 overflow-hidden select-none">
-      {/* Top Application Header */}
-      <Header
+    <div className="flex h-screen w-screen flex-col overflow-hidden bg-slate-950 font-sans antialiased text-slate-100 select-none">
+      {projectReady ? (
+        <>
+          <Header
         mode={mode}
-        onModeChange={setMode}
+        projectName={projectName}
         profileId={profileId}
         onProfileChange={setProfileId}
         reviewCount={reviewCount}
@@ -846,6 +972,7 @@ export default function App() {
         onOpenReleases={() => setIsReleasesOpen(true)}
         onSaveProject={handleSaveProject}
         onLoadProject={handleLoadProject}
+        onNewProject={handleNewProject}
         onOpenAudio={() => { void handleOpenAudio(); }}
         onOpenAudioFolder={() => { void handleOpenAudio(true); }}
         onImportOto={() => setIsImportOtoOpen(true)}
@@ -857,6 +984,30 @@ export default function App() {
         sidebarOpen={sidebarOpen}
         propertiesOpen={propertiesOpen}
       />
+
+      {updateAvailable && (
+        <div role="status" className="flex flex-wrap items-center justify-between gap-2 border-b border-state-info-border/60 bg-state-info-bg/40 px-4 py-2 text-xs text-state-info-text">
+          <span>
+            {updateStatus.status === 'downloaded'
+              ? `Labello ${updateStatus.version} is downloaded and ready to install.`
+              : `Labello ${updateStatus.version} is available on GitHub.`}
+          </span>
+          <div className="flex items-center gap-2">
+            {updateStatus.status === 'downloaded' ? (
+              <button onClick={() => { void handleInstallUpdate(); }} className="rounded-md bg-state-info-bg px-2.5 py-1 font-semibold text-white hover:bg-state-info-bg/80">
+                Restart to install
+              </button>
+            ) : (
+              <button onClick={() => setIsReleasesOpen(true)} className="rounded-md bg-state-info-bg px-2.5 py-1 font-semibold text-white hover:bg-state-info-bg/80">
+                Review update
+              </button>
+            )}
+            <button onClick={() => { void handleDeferUpdate(); }} className="rounded-md px-2.5 py-1 font-medium text-state-info-text hover:bg-state-info-bg/50">
+              Later
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Friendly import-error banner (Phase 2: never crash on a bad file) */}
       {importErrors.length > 0 && (
@@ -913,6 +1064,7 @@ export default function App() {
           <PropertiesPanel
             activeFile={activeFile}
             mode={mode}
+            profile={activeProfile}
             selectedPhonemeId={selectedPhonemeId}
             onUpdateOto={handleUpdateOto}
             onUpdateAlias={handleUpdateAlias}
@@ -928,8 +1080,27 @@ export default function App() {
           />
         )}
       </div>
+        </>
+      ) : (
+        <main className="flex flex-1 items-center justify-center px-6 text-center">
+          <div className="max-w-md space-y-3">
+            <img src="/labello-icon.png" alt="" className="mx-auto h-14 w-14 rounded-xl border border-border-subtle object-cover" />
+            <h1 className="text-lg font-semibold text-text-primary">Start with one focused workflow</h1>
+            <p className="text-sm leading-6 text-text-secondary">Choose a project type to open the matching labeling workspace.</p>
+          </div>
+        </main>
+      )}
 
       {/* Modals & Drawers */}
+      <NewProjectModal
+        isOpen={!projectReady || isNewProjectOpen}
+        isInitial={!projectReady}
+        initialMode={mode}
+        onClose={() => setIsNewProjectOpen(false)}
+        onCreate={handleCreateProject}
+        onOpenExisting={() => { void handleLoadProject(); }}
+      />
+
       <ReviewQueueModal
         isOpen={isReviewOpen}
         onClose={() => setIsReviewOpen(false)}
@@ -962,6 +1133,12 @@ export default function App() {
       <ReleasesModal
         isOpen={isReleasesOpen}
         onClose={() => setIsReleasesOpen(false)}
+        updateStatus={updateStatus}
+        onCheckForUpdates={() => { void handleCheckForUpdates(); }}
+        onDownloadUpdate={() => { void handleDownloadUpdate(); }}
+        onInstallUpdate={() => { void handleInstallUpdate(); }}
+        onOpenGitHubReleases={() => { void handleOpenGitHubReleases(); }}
+        onLater={() => { void handleDeferUpdate(); }}
       />
 
       <BatchProgressModal

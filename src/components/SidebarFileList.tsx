@@ -148,7 +148,7 @@ export const SidebarFileList: React.FC<SidebarFileListProps> = ({
         <div className="p-3 border-b border-border-subtle/80 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-xs font-semibold text-text-muted uppercase tracking-wider">
-              {mode === 'utau' ? 'Voicebank Samples' : 'Dataset Audio Files'}
+              {mode === 'utau' ? 'Voicebank Samples' : 'Vocal Dataset Samples'}
             </span>
             <span className="text-[10px] font-mono text-text-muted">{files.length} {files.length === 1 ? 'file' : 'files'}</span>
           </div>

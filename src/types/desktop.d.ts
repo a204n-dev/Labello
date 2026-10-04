@@ -16,6 +16,13 @@ interface DesktopProjectResult {
   missingAudio: string[];
 }
 
+interface DesktopUpdateStatus {
+  status: 'idle' | 'checking' | 'available' | 'downloading' | 'downloaded' | 'not-available' | 'manual' | 'error';
+  version?: string;
+  percent?: number;
+  message?: string;
+}
+
 interface LabelloDesktopApi {
   openAudioFiles(): Promise<DesktopAudioFile[]>;
   openAudioFolder(): Promise<DesktopAudioFile[]>;
@@ -35,6 +42,13 @@ interface LabelloDesktopApi {
   saveExport(fileName: string, contents: string, encoding: 'Shift-JIS' | 'UTF-8' | 'UTF-8-BOM'): Promise<{ filePath: string } | null>;
   saveProject(project: object, assets: Array<{ id: string; token?: string }>): Promise<{ filePath: string; missingAudio: string[] } | null>;
   openProject(): Promise<DesktopProjectResult | null>;
+  checkForUpdates(): Promise<void>;
+  downloadUpdate(): Promise<void>;
+  installUpdate(): Promise<void>;
+  openReleasesPage(): Promise<void>;
+  getDeferredUpdateVersion(): Promise<string | null>;
+  deferUpdate(version: string): Promise<void>;
+  onUpdateStatus(callback: (status: DesktopUpdateStatus) => void): () => void;
 }
 
 interface Window {

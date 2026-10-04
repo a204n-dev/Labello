@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { analyzeAcousticFeatures } from '../src/services/dsp/spectralAnalysis';
 import { AcousticEngine } from '../src/services/engines/acousticEngine';
 import { generateOtoFromFeatures } from '../src/services/oto/otoGenerator';
+import { JAPANESE_VOICEBANK_PROFILES } from '../src/services/oto/otoProfiles';
 import { validateOto } from '../src/services/oto/otoValidator';
 
 function makeBuffer(samples: Float32Array, sampleRate = 16000): AudioBuffer {
@@ -29,6 +30,10 @@ async function run() {
 
   const oto = generateOtoFromFeatures(features, { profile: 'CV' });
   assert.ok(validateOto(oto, features.durationMs).isValid);
+  assert.deepEqual(
+    JAPANESE_VOICEBANK_PROFILES.map(profile => profile.recordingStyle).sort(),
+    ['CV', 'CVVC', 'VCV']
+  );
 
   const vowelOnlySamples = new Float32Array(sampleRate / 2);
   for (let i = 0; i < vowelOnlySamples.length; i++) {
@@ -51,7 +56,9 @@ async function run() {
   const engine = new AcousticEngine();
   const cv = await engine.analyzeAudio(makeBuffer(samples), 'ka.wav', 'ka', { mode: 'utau', profileId: 'japanese_cv' });
   const vcv = await engine.analyzeAudio(makeBuffer(samples), 'a_ka.wav', 'a ka', { mode: 'utau', profileId: 'japanese_vcv' });
-  assert.ok(cv.otoParameters && vcv.otoParameters);
+  const cvvc = await engine.analyzeAudio(makeBuffer(samples), 'ka_a_k.wav', 'ka a k', { mode: 'utau', profileId: 'japanese_cvvc' });
+  assert.ok(cv.otoParameters && cvvc.otoParameters && vcv.otoParameters);
+  assert.ok(cvvc.otoParameters!.overlapMs < cv.otoParameters!.overlapMs);
   assert.ok(vcv.otoParameters!.overlapMs > cv.otoParameters!.overlapMs);
 
   console.log('Phase 6 tests: robust UTAU acoustic boundaries and profile-aware OTO estimates passed');

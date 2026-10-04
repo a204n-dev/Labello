@@ -22,12 +22,12 @@ import {
   Settings,
 } from 'lucide-react';
 import { WorkstationMode, VoicebankProfileId } from '../types/workstation';
-import { VOICEBANK_PROFILES } from '../services/oto/otoProfiles';
+import { JAPANESE_VOICEBANK_PROFILES, VOICEBANK_PROFILES } from '../services/oto/otoProfiles';
 import { Dropdown } from './ui/Dropdown';
 
 interface HeaderProps {
   mode: WorkstationMode;
-  onModeChange: (mode: WorkstationMode) => void;
+  projectName: string;
   profileId: VoicebankProfileId;
   onProfileChange: (profileId: VoicebankProfileId) => void;
   reviewCount: number;
@@ -45,6 +45,7 @@ interface HeaderProps {
   onOpenReleases: () => void;
   onSaveProject: () => void;
   onLoadProject: () => void;
+  onNewProject: () => void;
   onOpenAudio?: () => void;
   onOpenAudioFolder?: () => void;
   onImportOto?: () => void;
@@ -74,7 +75,7 @@ const SHORTCUTS = [
 
 export const Header: React.FC<HeaderProps> = ({
   mode,
-  onModeChange,
+  projectName,
   profileId,
   onProfileChange,
   reviewCount,
@@ -92,6 +93,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenReleases,
   onSaveProject,
   onLoadProject,
+  onNewProject,
   onOpenAudio,
   onOpenAudioFolder,
   onImportOto,
@@ -106,6 +108,10 @@ export const Header: React.FC<HeaderProps> = ({
   const [fileMenuOpen, setFileMenuOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [viewMenuOpen, setViewMenuOpen] = useState(false);
+  const modeAccent = mode === 'utau' ? 'text-mode-utau' : 'text-mode-diffsinger';
+  const primaryActionAccent = mode === 'utau'
+    ? 'bg-mode-utau hover:bg-mode-utau/90 active:bg-mode-utau shadow-mode-utau/20'
+    : 'bg-mode-diffsinger hover:bg-mode-diffsinger/90 active:bg-mode-diffsinger shadow-mode-diffsinger/20';
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === '?' && e.shiftKey) {
@@ -127,7 +133,7 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <>
       <header className="min-h-[var(--header-height)] bg-bg-secondary border-b border-border-subtle px-3 py-2 flex flex-wrap items-center gap-x-4 gap-y-2 2xl:flex-nowrap 2xl:justify-between 2xl:px-4 2xl:py-0 select-none text-text-primary" onKeyDown={handleKeyDown}>
-        {/* Left: Brand, Mode, Profile */}
+        {/* Left: Brand, project context, and UTAU format */}
         <div className="flex items-center gap-3 min-w-0 flex-1 basis-full 2xl:basis-auto">
           <div className="flex items-center gap-2.5 shrink-0">
             <img src="/labello-icon.png" alt="" className="w-8 h-8 rounded-lg object-cover border border-border-subtle" />
@@ -138,18 +144,22 @@ export const Header: React.FC<HeaderProps> = ({
 
           <div className="h-5 w-px bg-border-subtle mx-1 hidden sm:block" />
 
-          {/* Mode Toggle */}
-          <div className="bg-bg-tertiary p-1 rounded-lg border border-border-subtle flex items-center gap-1 shrink-0">
-            <button onClick={() => onModeChange('utau')} className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${mode === 'utau' ? 'bg-mode-utau text-white shadow-sm' : 'text-text-secondary hover:text-text-primary'}`}>UTAU Auto-OTO</button>
-            <button onClick={() => onModeChange('diffsinger')} className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${mode === 'diffsinger' ? 'bg-mode-diffsinger text-white shadow-sm' : 'text-text-secondary hover:text-text-primary'}`}>DiffSinger Dataset</button>
+          <div className="flex min-w-0 items-center gap-2">
+            <span className={`shrink-0 rounded-md px-2 py-1 text-[11px] font-semibold ${mode === 'utau' ? 'bg-mode-utau/15 text-mode-utau' : 'bg-mode-diffsinger/15 text-mode-diffsinger'}`}>
+              {mode === 'utau' ? 'UTAU Auto-OTO' : 'Vocal dataset'}
+            </span>
+            <span className="max-w-40 truncate text-xs text-text-muted" title={projectName}>{projectName}</span>
           </div>
 
           {/* Voicebank Profile (UTAU mode) */}
           {mode === 'utau' && (
             <div className="flex items-center gap-2 text-xs text-text-secondary shrink-0">
-              <span className="text-text-muted font-medium">Profile:</span>
-              <select value={profileId} onChange={(e) => onProfileChange(e.target.value as VoicebankProfileId)} className="bg-bg-tertiary border border-border-subtle text-text-primary text-xs rounded-md px-2 py-1 outline-none focus:border-border-focus transition-colors min-w-[160px]">
-                {VOICEBANK_PROFILES.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+              <label htmlFor="voicebank-format" className="text-text-muted font-medium">Format:</label>
+              <select id="voicebank-format" aria-label="Japanese voicebank format" value={profileId} onChange={(e) => onProfileChange(e.target.value as VoicebankProfileId)} className="bg-bg-tertiary border border-border-subtle text-text-primary text-xs rounded-md px-2 py-1 outline-none focus:border-border-focus transition-colors min-w-[160px]">
+                {JAPANESE_VOICEBANK_PROFILES.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                {!JAPANESE_VOICEBANK_PROFILES.some(profile => profile.id === profileId) && (
+                  <option value={profileId} disabled>{VOICEBANK_PROFILES.find(profile => profile.id === profileId)?.name || 'Legacy profile'}</option>
+                )}
               </select>
             </div>
           )}
@@ -180,7 +190,7 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Dataset Health */}
           <button onClick={onOpenHealth} className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-lg bg-bg-tertiary border border-border-subtle text-text-secondary hover:bg-bg-hover transition-colors">
-            <Sliders className="w-3.5 h-3.5 text-mode-utau" />
+            <Sliders className={`w-3.5 h-3.5 ${modeAccent}`} />
             <span className="hidden sm:inline">Health</span>
             <span className={`font-semibold ${healthScore >= 90 ? 'text-state-success-text' : healthScore >= 70 ? 'text-state-warning-text' : 'text-state-error-text'}`}>{healthScore}/100</span>
           </button>
@@ -189,9 +199,9 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Right: Actions, File Menu, View Menu, Help */}
         <div className="order-3 ml-auto flex shrink-0 flex-wrap items-center justify-end gap-1.5 2xl:order-none">
           {/* Primary Action */}
-          <button onClick={onBatchAnalyze} disabled={isAnalyzing} className="flex items-center gap-1.5 bg-mode-utau hover:bg-mode-utau/90 active:bg-mode-utau text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-all shadow-sm shadow-mode-utau/20 disabled:opacity-50">
+          <button onClick={onBatchAnalyze} disabled={isAnalyzing} className={`flex items-center gap-1.5 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-all shadow-sm disabled:opacity-50 ${primaryActionAccent}`}>
             <Sparkles className={`w-3.5 h-3.5 ${isAnalyzing ? 'animate-spin' : ''}`} />
-            <span>{isAnalyzing ? 'Analyzing...' : 'Auto-Analyze All'}</span>
+            <span>{isAnalyzing ? 'Analyzing...' : mode === 'utau' ? 'Estimate OTO All' : 'Estimate Labels'}</span>
           </button>
 
           <div className="h-5 w-px bg-border-subtle mx-1 hidden sm:block" />
@@ -202,10 +212,13 @@ export const Header: React.FC<HeaderProps> = ({
             align="right"
             items={[
               { label: 'Add Audio Files…', onClick: () => onOpenAudio?.(), icon: <FolderOpen className="w-3.5 h-3.5" />, shortcut: 'Ctrl+O' },
-              { label: 'Open Audio Folder…', onClick: () => onOpenAudioFolder?.(), icon: <FolderOpen className="w-3.5 h-3.5" />, dividerAfter: true },
-              { label: 'Import Base OTO (oto.ini)…', onClick: () => onImportOto?.(), icon: <FolderOpen className="w-3.5 h-3.5" />, dividerAfter: true },
-              { label: 'Reclist Match Report…', onClick: () => onOpenReclistMatch?.(), icon: <FileText className="w-3.5 h-3.5" /> },
+              { label: 'Open Audio Folder…', onClick: () => onOpenAudioFolder?.(), icon: <FolderOpen className="w-3.5 h-3.5" />, dividerAfter: mode === 'utau' },
+              ...(mode === 'utau' ? [
+                { label: 'Import Base OTO (oto.ini)…', onClick: () => onImportOto?.(), icon: <FolderOpen className="w-3.5 h-3.5" />, dividerAfter: true },
+                { label: 'Reclist Match Report…', onClick: () => onOpenReclistMatch?.(), icon: <FileText className="w-3.5 h-3.5" /> },
+              ] : []),
               { dividerAfter: true },
+              { label: 'New Project…', onClick: onNewProject, icon: <FileText className="w-3.5 h-3.5" /> },
               { label: 'Open Project (.vbp)…', onClick: onLoadProject, icon: <FolderOpen className="w-3.5 h-3.5" /> },
               { label: 'Save Project (.vbp)', onClick: onSaveProject, icon: <Save className="w-3.5 h-3.5" />, shortcut: 'Ctrl+S' },
             ]}

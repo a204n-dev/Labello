@@ -3,7 +3,13 @@
   "productName": "Labello",
   "npmRebuild": false,
   "nodeGypRebuild": false,
-  "publish": null,
+  "publish": [
+    {
+      "provider": "github",
+      "owner": "a204n-dev",
+      "repo": "Labello"
+    }
+  ],
   "directories": {
     "output": "release"
   },

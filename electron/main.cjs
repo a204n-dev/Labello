@@ -1,4 +1,5 @@
 const { app, BrowserWindow, dialog, ipcMain, shell } = require('electron');
+const { autoUpdater } = require('electron-updater');
 const fs = require('fs/promises');
 const path = require('path');
 const crypto = require('crypto');
@@ -7,6 +8,92 @@ const os = require('os');
 const audioExtensions = new Set(['.wav', '.flac', '.mp3', '.ogg', '.oga', '.m4a', '.aac']);
 const selectedAudio = new Map();
 let mainWindow = null;
+const releasesUrl = 'https://github.com/a204n-dev/Labello/releases/latest';
+const updatePreferencesPath = () => path.join(app.getPath('userData'), 'update-preferences.json');
+
+autoUpdater.autoDownload = false;
+autoUpdater.autoInstallOnAppQuit = false;
+
+function canUseAutoUpdater() {
+  return app.isPackaged && process.platform === 'win32' && !process.env.PORTABLE_EXECUTABLE_DIR;
+}
+
+function sendUpdateStatus(status) {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('labello:update-status', status);
+  }
+}
+
+function reportUpdateError(error) {
+  const message = error instanceof Error ? error.message : String(error);
+  console.error('Labello update operation failed:', message);
+  sendUpdateStatus({ status: 'error', message });
+}
+
+autoUpdater.on('checking-for-update', () => sendUpdateStatus({ status: 'checking' }));
+autoUpdater.on('update-available', info => sendUpdateStatus({ status: 'available', version: info.version }));
+autoUpdater.on('update-not-available', () => sendUpdateStatus({ status: 'not-available' }));
+autoUpdater.on('download-progress', progress => sendUpdateStatus({
+  status: 'downloading',
+  percent: Math.round(progress.percent),
+}));
+autoUpdater.on('update-downloaded', info => sendUpdateStatus({ status: 'downloaded', version: info.version }));
+autoUpdater.on('error', reportUpdateError);
+
+ipcMain.handle('labello:update-check', async () => {
+  if (!canUseAutoUpdater()) {
+    sendUpdateStatus({ status: 'manual' });
+    return;
+  }
+  try {
+    await autoUpdater.checkForUpdates();
+  } catch (error) {
+    reportUpdateError(error);
+  }
+});
+
+ipcMain.handle('labello:update-download', async () => {
+  if (!canUseAutoUpdater()) throw new Error('In-app updates are available only in the installed Windows build.');
+  try {
+    await autoUpdater.downloadUpdate();
+  } catch (error) {
+    reportUpdateError(error);
+  }
+});
+
+ipcMain.handle('labello:update-install', () => {
+  if (!canUseAutoUpdater()) throw new Error('This build must be updated by downloading the latest release.');
+  autoUpdater.quitAndInstall();
+});
+
+ipcMain.handle('labello:update-open-releases', () => shell.openExternal(releasesUrl));
+
+ipcMain.handle('labello:update-get-deferred-version', async () => {
+  try {
+    const preferences = JSON.parse(await fs.readFile(updatePreferencesPath(), 'utf8'));
+    if (preferences && (preferences.deferredVersion === null || typeof preferences.deferredVersion === 'string')) {
+      return preferences.deferredVersion;
+    }
+    throw new Error('The saved update preference has an invalid format.');
+  } catch (error) {
+    if (error && error.code === 'ENOENT') return null;
+    console.error('Could not read the saved update preference:', error);
+    throw error;
+  }
+});
+
+ipcMain.handle('labello:update-defer', async (_event, version) => {
+  if (typeof version !== 'string' || version.trim() === '') {
+    throw new Error('A valid update version is required to defer this update.');
+  }
+  try {
+    await fs.mkdir(app.getPath('userData'), { recursive: true });
+    await fs.writeFile(updatePreferencesPath(), JSON.stringify({ deferredVersion: version }), 'utf8');
+  } catch (error) {
+    console.error('Could not save the deferred update preference:', error);
+    throw error;
+  }
+});
 
 function registerAudioFile(filePath, displayName) {
   const token = crypto.randomUUID();
@@ -216,6 +303,11 @@ function createWindow() {
 
 app.whenReady().then(() => {
   createWindow();
+  mainWindow.webContents.once('did-finish-load', () => {
+    if (canUseAutoUpdater()) {
+      autoUpdater.checkForUpdates().catch(reportUpdateError);
+    }
+  });
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
