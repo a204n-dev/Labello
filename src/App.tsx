@@ -35,6 +35,8 @@ import { createSyntheticVocalBuffer, extractPeaks, decodeAudioData } from './ser
 import { EngineCoordinator } from './services/engines/engineCoordinator';
 import { validateDatasetHealth } from './services/diffsinger/datasetValidator';
 import { getProfileById } from './services/oto/otoProfiles';
+import { parseOtoIni } from './services/oto/otoParser';
+import { applyBaseOtoEntries } from './services/oto/baseOtoImport';
 import { romajiToHiragana } from './services/oto/japaneseKana';
 import { generateOtoIniContent } from './services/oto/otoExporter';
 import { importDatasetLabelFiles, type DatasetLabelFormat } from './services/diffsinger/datasetLabelFormats';
@@ -231,9 +233,15 @@ export default function App() {
     pushHistory(nextFiles);
   };
 
-  const handleCreateProject = (projectMode: WorkstationMode, name: string) => {
+  const handleCreateProject = async (
+    projectMode: WorkstationMode,
+    name: string,
+    selectedProfileId: VoicebankProfileId = 'japanese_cv',
+    selectedAudioFiles: File[] = [],
+    baseOtoFile: File | null = null,
+  ) => {
     setMode(projectMode);
-    setProfileId('japanese_cv');
+    setProfileId(selectedProfileId);
     setFiles([]);
     setSettings(createDefaultProjectSettings());
     setActiveFileId(null);
@@ -251,6 +259,17 @@ export default function App() {
     replaceHistory([]);
     setProjectReady(true);
     setIsNewProjectOpen(false);
+    if (selectedAudioFiles.length > 0) {
+      await handleImportAudio(
+        selectedAudioFiles.map(file => ({ name: file.name, file })),
+        {
+          mode: projectMode,
+          profileId: selectedProfileId,
+          replaceExisting: true,
+          baseOtoFile,
+        }
+      );
+    }
   };
 
   const handleNewProject = () => {
@@ -393,7 +412,8 @@ export default function App() {
   const analyzeFilesBatch = async (
     targetFiles: AudioFileItem[],
     currentMode: WorkstationMode,
-    allFiles: AudioFileItem[] = files
+    allFiles: AudioFileItem[] = files,
+    currentProfileId: VoicebankProfileId = profileId
   ) => {
     if (targetFiles.length === 0) return;
     setIsAnalyzing(true);
@@ -447,7 +467,7 @@ export default function App() {
           file.name,
           file.alias || file.lyrics || 'a',
           currentMode,
-          { profileId }
+          { profileId: currentProfileId }
         );
 
         setBatchStage('Saving estimate for manual review');
@@ -483,10 +503,20 @@ export default function App() {
   // Never modifies the original file; decodes a copy into memory.
   const [importErrors, setImportErrors] = useState<string[]>([]);
   const [importNotice, setImportNotice] = useState<string | null>(null);
-  const handleImportAudio = async (candidates: AudioImportCandidate[]) => {
+  const handleImportAudio = async (
+    candidates: AudioImportCandidate[],
+    setup?: {
+      mode: WorkstationMode;
+      profileId: VoicebankProfileId;
+      replaceExisting?: boolean;
+      baseOtoFile?: File | null;
+    }
+  ) => {
     const { validateAudioFile, buildMetadata } = await import('./services/audio/audioMetadata');
     const imported: AudioFileItem[] = [];
     const errors: string[] = [];
+    const importMode = setup?.mode || mode;
+    const importProfileId = setup?.profileId || profileId;
 
     for (const candidate of candidates) {
       let file = candidate.file;
@@ -533,7 +563,7 @@ export default function App() {
         }
         const peaks = extractPeaks(audioBuf, 1200);
         const fileStem = file.name.replace(/\.[^/.]+$/, '').split(/[\\/]/).pop() || file.name;
-        const alias = mode === 'utau' && getProfileById(profileId).language === 'Japanese'
+        const alias = importMode === 'utau' && getProfileById(importProfileId).language === 'Japanese'
           ? romajiToHiragana(fileStem)
           : fileStem;
         const id = `file_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
@@ -550,7 +580,7 @@ export default function App() {
           status: 'pending',
           confidence: 85,
           alias,
-          lyrics: mode === 'diffsinger' ? '' : alias,
+          lyrics: importMode === 'diffsinger' ? '' : alias,
           issues: [],
           lastModified: Date.now(),
           userModified: false,
@@ -565,16 +595,49 @@ export default function App() {
       }
     }
 
+    let importedBaseOtoCount = 0;
+    let unmatchedBaseOtoCount = 0;
+    const filesWithBaseOto = new Set<string>();
+    if (setup?.baseOtoFile && imported.length > 0) {
+      try {
+        const parsed = parseOtoIni(new Uint8Array(await setup.baseOtoFile.arrayBuffer()));
+        if (parsed.errors.length > 0) {
+          errors.push(...parsed.errors.map(error => `Base oto.ini: ${error}`));
+        } else {
+          errors.push(...parsed.warnings.map(warning => `Base oto.ini: ${warning}`));
+          const result = applyBaseOtoEntries(imported, parsed.entries);
+          imported.splice(0, imported.length, ...result.files);
+          result.appliedFileIds.forEach(id => filesWithBaseOto.add(id));
+          importedBaseOtoCount = result.appliedCount;
+          unmatchedBaseOtoCount = result.unmatchedEntries.length;
+          result.ambiguousFiles.forEach(fileName => {
+            errors.push(`Base oto.ini has multiple entries for "${fileName}"; its existing alias and timing were left unchanged.`);
+          });
+          if (unmatchedBaseOtoCount > 0) {
+            errors.push(`${unmatchedBaseOtoCount} base oto.ini entr${unmatchedBaseOtoCount === 1 ? 'y' : 'ies'} did not match an imported audio filename and were skipped.`);
+          }
+        }
+      } catch (error) {
+        errors.push(`Could not read base oto.ini: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
+
     setImportErrors(errors);
     if (errors.length > 0) {
       console.warn('Audio import issues:', errors);
     }
 
     if (imported.length > 0) {
-      const merged = [...files, ...imported];
+      const existingFiles = setup?.replaceExisting ? [] : files;
+      const merged = [...existingFiles, ...imported];
       setFiles(merged);
       setActiveFileId(imported[0].id);
       commitHistory(merged);
+      if (setup?.baseOtoFile) {
+        setImportNotice(
+          `Imported ${imported.length} recording${imported.length === 1 ? '' : 's'} and applied ${importedBaseOtoCount} matching base oto.ini entr${importedBaseOtoCount === 1 ? 'y' : 'ies'}.${unmatchedBaseOtoCount > 0 ? ` ${unmatchedBaseOtoCount} unmatched entr${unmatchedBaseOtoCount === 1 ? 'y was' : 'ies were'} skipped.` : ''}`
+        );
+      }
       // Persist lightweight snapshot (Phase 2 project integration)
       try {
         const { autosaveSnapshot: save } = await import('./services/audio/projectStore');
@@ -603,7 +666,10 @@ export default function App() {
           imported[0].id
         );
       } catch { /* non-fatal */ }
-      analyzeFilesBatch(imported, mode, merged);
+      const filesToAnalyze = imported.filter(file => !filesWithBaseOto.has(file.id));
+      if (filesToAnalyze.length > 0) {
+        void analyzeFilesBatch(filesToAnalyze, importMode, merged, importProfileId);
+      }
     }
   };
 

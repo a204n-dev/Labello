@@ -7,6 +7,9 @@ import {
   parseDatasetLabels,
 } from '../src/services/diffsinger/datasetLabelFormats';
 import { validateDatasetHealth } from '../src/services/diffsinger/datasetValidator';
+import { applyBaseOtoEntries } from '../src/services/oto/baseOtoImport';
+import { getProfileById, VOICEBANK_PROFILES } from '../src/services/oto/otoProfiles';
+import type { ParsedOtoEntry } from '../src/types/workstation';
 
 function audioFile(name: string, durationMs = 1000): AudioFileItem {
   return {
@@ -142,6 +145,35 @@ assert.ok(validateDatasetHealth([clipped], 'diffsinger').issues.some(issue => is
 const missingBuffer = audioFile('missing.wav');
 delete missingBuffer.audioBuffer;
 assert.ok(validateDatasetHealth([missingBuffer], 'diffsinger').issues.some(issue => issue.code === 'MISSING_AUDIO'));
+
+const baseTiming = { offsetMs: 10, overlapMs: 20, preutteranceMs: 30, fixedMs: 40, cutoffMs: -50 };
+const baseOtoEntries: ParsedOtoEntry[] = [
+  { fileName: 'voice/KA.WAV', alias: 'か', oto: baseTiming, rawLine: '', lineNumber: 1 },
+  { fileName: 'missing.wav', alias: 'み', oto: baseTiming, rawLine: '', lineNumber: 2 },
+];
+const baseOtoImport = applyBaseOtoEntries([audioFile('ka.wav'), audioFile('other.wav')], baseOtoEntries);
+assert.equal(baseOtoImport.appliedCount, 1);
+assert.deepEqual(baseOtoImport.appliedFileIds, ['ka.wav']);
+assert.equal(baseOtoImport.files[0].alias, 'か');
+assert.deepEqual(baseOtoImport.files[0].oto, baseTiming);
+assert.equal(baseOtoImport.files[0].status, 'verified');
+assert.deepEqual(baseOtoImport.unmatchedEntries.map(entry => entry.fileName), ['missing.wav']);
+const ambiguous = applyBaseOtoEntries([audioFile('ka.wav')], [
+  ...baseOtoEntries.slice(0, 1),
+  { ...baseOtoEntries[0], alias: '別名', lineNumber: 3 },
+]);
+assert.deepEqual(ambiguous.ambiguousFiles, ['ka.wav']);
+assert.equal(ambiguous.appliedCount, 0);
+const duplicateAudioNames = applyBaseOtoEntries(
+  [audioFile('ka.wav'), { ...audioFile('ka.wav'), id: 'second-ka' }],
+  baseOtoEntries.slice(0, 1),
+);
+assert.deepEqual(duplicateAudioNames.ambiguousFiles, ['ka.wav', 'ka.wav']);
+assert.equal(duplicateAudioNames.appliedCount, 0);
+assert.equal(VOICEBANK_PROFILES.filter(profile => profile.language === 'Chinese').length, 4);
+assert.equal(getProfileById('chinese_vcv').recordingStyle, 'VCV');
+assert.equal(getProfileById('english_arpasing').language, 'English');
+assert.equal(getProfileById('japanese_custom').language, 'Japanese');
 
 const orphaned = audioFile('orphaned.wav');
 orphaned.phonemes = [{ id: 'outside', phoneme: 'a', startMs: 0, endMs: 1500, confidence: 80, status: 'moderate' }];

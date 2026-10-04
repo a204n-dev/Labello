@@ -4,7 +4,13 @@ export type VoicebankProfileId =
   | 'japanese_cv' 
   | 'japanese_vcv' 
   | 'japanese_cvvc' 
+  | 'japanese_custom'
   | 'english_arpasing' 
+  | 'english_custom'
+  | 'chinese_cv'
+  | 'chinese_vcv'
+  | 'chinese_cvvc'
+  | 'chinese_custom'
   | 'custom';
 
 export interface VoicebankProfile {

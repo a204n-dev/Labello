@@ -61,7 +61,7 @@ async function run() {
   assert.ok(validateOto(oto, features.durationMs).isValid);
   assert.deepEqual(
     JAPANESE_VOICEBANK_PROFILES.map(profile => profile.recordingStyle).sort(),
-    ['CV', 'CVVC', 'VCV']
+    ['CV', 'CVVC', 'Other', 'VCV']
   );
 
   const vowelOnlySamples = new Float32Array(sampleRate / 2);

@@ -27,6 +27,7 @@ Labello combines vLabeler's configurable voice-labeling workflow with LabelMakr'
 
 ## UTAU voicebank workflow
 
+- [x] Guide voicebank setup through language, reclist format, recording import, and optional base oto.ini import.
 - [x] Convert Japanese romaji aliases to Hiragana on import and match reclist entries across romaji and kana, including mixed CVVC transitions.
 - [x] Package reviewed samples with oto.ini, character metadata, an optional portrait, and a README.
 - [ ] Make Japanese CV, CVVC, and VCV complete voice-authoring workflows, including format-specific timing, aliasing, reclists, and real voicebank fixtures.

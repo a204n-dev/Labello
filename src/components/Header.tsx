@@ -23,7 +23,7 @@ import {
   X,
 } from 'lucide-react';
 import { WorkstationMode, VoicebankProfileId } from '../types/workstation';
-import { JAPANESE_VOICEBANK_PROFILES, VOICEBANK_PROFILES } from '../services/oto/otoProfiles';
+import { getProfileById, VOICEBANK_PROFILES } from '../services/oto/otoProfiles';
 import { Dropdown } from './ui/Dropdown';
 
 interface HeaderProps {
@@ -116,6 +116,8 @@ export const Header: React.FC<HeaderProps> = ({
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [viewMenuOpen, setViewMenuOpen] = useState(false);
   const modeAccent = mode === 'utau' ? 'text-mode-utau' : 'text-mode-diffsinger';
+  const activeProfile = getProfileById(profileId);
+  const availableProfiles = VOICEBANK_PROFILES.filter(profile => profile.language === activeProfile.language);
   const primaryActionAccent = mode === 'utau'
     ? 'bg-mode-utau hover:brightness-110 active:brightness-95'
     : 'bg-mode-diffsinger hover:brightness-110 active:brightness-95';
@@ -162,10 +164,10 @@ export const Header: React.FC<HeaderProps> = ({
           {mode === 'utau' && (
             <div className="flex items-center gap-2 text-xs text-text-secondary shrink-0">
               <label htmlFor="voicebank-format" className="text-text-muted font-medium">Format:</label>
-              <select id="voicebank-format" aria-label="Japanese voicebank format" value={profileId} onChange={(e) => onProfileChange(e.target.value as VoicebankProfileId)} className="bg-bg-tertiary border border-border-subtle text-text-primary text-xs rounded-md px-2 py-1 outline-none focus:border-border-focus transition-colors min-w-[160px]">
-                {JAPANESE_VOICEBANK_PROFILES.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-                {!JAPANESE_VOICEBANK_PROFILES.some(profile => profile.id === profileId) && (
-                  <option value={profileId} disabled>{VOICEBANK_PROFILES.find(profile => profile.id === profileId)?.name || 'Legacy profile'}</option>
+              <select id="voicebank-format" aria-label={`${activeProfile.language} voicebank format`} value={profileId} onChange={(e) => onProfileChange(e.target.value as VoicebankProfileId)} className="bg-bg-tertiary border border-border-subtle text-text-primary text-xs rounded-md px-2 py-1 outline-none focus:border-border-focus transition-colors min-w-[160px]">
+                {availableProfiles.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                {!availableProfiles.some(profile => profile.id === profileId) && (
+                  <option value={profileId} disabled>{activeProfile.name || 'Legacy profile'}</option>
                 )}
               </select>
             </div>
